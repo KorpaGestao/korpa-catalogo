@@ -397,7 +397,17 @@ function selectVariation(idx){
   document.querySelectorAll(".sizechip").forEach(function(el){
     el.classList.toggle("selected", Number(el.getAttribute("data-vi"))===idx);
   });
+  applyColorImage(p, p.variations[idx].color);
 }
+function applyColorImage(p, color){
+  if(!color) return;
+  var match = (p.color_images||[]).find(function(ci){ return ci.color===color; });
+  if(!match || !match.image) return;
+  var mainEl = document.getElementById("gallery-main");
+  if(mainEl){ mainEl.innerHTML = "<img src=\"" + esc(match.image) + "\" id=\"gallery-main-img\">"; }
+  document.querySelectorAll(".gallery-thumbs img").forEach(function(img){ img.classList.remove("active"); });
+}
+
 
 function currentProduct(){
   var hash = window.location.hash || "";
