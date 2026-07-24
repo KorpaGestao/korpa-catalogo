@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Korpa - Catalogo</title>
-<meta name="description" content="Confira as pecas fitness disponiveis na Korpa.">
-<meta property="og:title" content="Korpa - Catalogo">
-<meta property="og:description" content="Confira as pecas fitness disponiveis na Korpa.">
+<title>Korpa - Catálogo</title>
+<meta name="description" content="Confira as peças fitness disponíveis na Korpa.">
+<meta property="og:title" content="Korpa - Catálogo">
+<meta property="og:description" content="Confira as peças fitness disponíveis na Korpa.">
 <meta property="og:type" content="website">
 <style>
 :root{--bg:#f8f1e7;--card:#fffdfa;--ink:#3a2e2b;--muted:#756258;--accent:#b76e79;--accent-dark:#8f4f56;--danger:#c0392b;--border:#ecdfd0;}
@@ -68,10 +68,56 @@ a{color:inherit;text-decoration:none;}
   .hero h2{font-size:22px;}
   .wrap{padding:14px;}
 }
+
+.cart-btn{position:relative;background:rgba(255,255,255,.15);border:none;color:#fff;padding:8px 12px;border-radius:20px;cursor:pointer;font-size:16px;display:flex;align-items:center;transition:background .2s;}
+.cart-btn:hover{background:rgba(255,255,255,.28);}
+.cart-badge{position:absolute;top:-6px;right:-6px;background:var(--accent);color:#fff;font-size:11px;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;font-weight:bold;}
+.cart-badge.bump{animation:bump .3s ease;}
+@keyframes bump{0%{transform:scale(1);}40%{transform:scale(1.4);}100%{transform:scale(1);}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.pcard{animation:fadeInUp .35s ease both;}
+.pcard .imgwrap img{transition:transform .35s ease;}
+.pcard:hover .imgwrap img{transform:scale(1.06);}
+.actionbtn{transition:transform .15s ease,filter .15s ease;}
+.actionbtn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+.actionbtn:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none;}
+.sizechip{cursor:pointer;transition:all .15s ease;}
+.sizechip.selected{background:var(--accent-dark);color:#fff;border-color:var(--accent-dark);}
+.sizechip.unavailable{cursor:not-allowed;}
+.qtyrow{display:flex;align-items:center;gap:10px;margin:14px 0 4px;}
+.qtyrow button{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:16px;transition:background .15s;}
+.qtyrow button:hover{background:var(--bg);}
+.qtyrow input{width:44px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:7px 4px;font-size:14px;}
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:150;}
+.cart-overlay.open{opacity:1;pointer-events:auto;}
+.cart-drawer{position:fixed;top:0;right:0;width:380px;max-width:92vw;height:100%;background:#fff;box-shadow:-6px 0 30px rgba(0,0,0,.2);transform:translateX(100%);transition:transform .3s ease;z-index:151;display:flex;flex-direction:column;}
+.cart-drawer.open{transform:translateX(0);}
+.cart-drawer-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);}
+.cart-drawer-head h3{font-size:18px;}
+.cart-close{cursor:pointer;font-size:24px;color:var(--muted);line-height:1;}
+.cart-items{flex:1;overflow-y:auto;padding:6px 18px;}
+.cart-item{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);animation:fadeInUp .25s ease both;}
+.ci-img{width:56px;height:56px;border-radius:8px;object-fit:cover;background:#f1e9dc;flex-shrink:0;}
+.ci-info{flex:1;min-width:0;}
+.ci-name{font-size:13px;font-weight:bold;}
+.ci-variation{font-size:11px;}
+.ci-price{font-size:12px;color:var(--accent-dark);margin-top:2px;}
+.ci-qtyrow{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.ci-qtyrow button{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px;line-height:1;}
+.ci-remove{color:var(--danger);font-size:12px;cursor:pointer;margin-left:auto;}
+.cart-footer{padding:16px 18px;border-top:1px solid var(--border);}
+.cart-subtotal{font-size:15px;font-weight:bold;margin-bottom:10px;display:flex;justify-content:space-between;}
+.cart-footer .actionbtn{width:100%;margin:0;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:8px;font-size:14px;opacity:0;transition:all .3s ease;z-index:200;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:80vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.color-dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.2);flex-shrink:0;}
+.sizechip{display:inline-flex;align-items:center;}
+.ci-variation{display:flex;align-items:center;}
 </style>
 </head>
 <body>
-<div id="app"><div class="wrap">Carregando catalogo...</div></div>
+<div id="app"><div class="wrap">Carregando catálogo...</div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -79,7 +125,7 @@ var SUPABASE_URL = "https://sksqtrlqbcaazsreqdps.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNrc3F0cmxxYmNhYXpzcmVxZHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzOTA3NTksImV4cCI6MjA5OTk2Njc1OX0.GHfc89i3Lw5te62l6errMN3Ms_W5Bsu8jguATBe2D38";
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var STORE_NAME = "Korpa";
-var WHATSAPP_NUMBER = "5585920064349"; // ex: "5585999999999" - opcional, deixa vazio pra ocultar o botao de interesse via WhatsApp
+var WHATSAPP_NUMBER = "5585920064349"; // ex: "5585999999999" - opcional, deixa vazio para ocultar o botão de interesse via WhatsApp
 
 var products = [];
 var loaded = false;
@@ -91,7 +137,7 @@ function brl(n){ return "R$ " + Number(n||0).toLocaleString("pt-BR",{minimumFrac
 async function loadProducts(){
   var res = await sb.from("catalog_products").select("*").order("created_at", {ascending:false});
   if(res.error){
-    document.getElementById("app").innerHTML = "<div class=\"wrap\"><p>Nao foi possivel carregar o catalogo agora. Tente novamente em instantes.</p></div>";
+    document.getElementById("app").innerHTML = "<div class=\"wrap\"><p>Não foi possível carregar o catálogo agora. Tente novamente em instantes.</p></div>";
     console.error(res.error);
     return;
   }
@@ -111,6 +157,7 @@ function route(){
   } else {
     renderHome(null);
   }
+  renderCartBadge();
   window.scrollTo(0,0);
 }
 window.addEventListener("hashchange", route);
@@ -127,7 +174,7 @@ function productCardHtml(p){
     "<div class=\"imgwrap\">" +
     (img ? ("<img src=\""+esc(img)+"\" alt=\""+esc(p.name)+"\" loading=\"lazy\">") : "<span class=\"noimg\">sem foto</span>") +
     (!p.in_stock ? "<span class=\"badge-oos\">Sem estoque</span>" : "") +
-    (p.promo_price ? "<span class=\"badge-promo\">Promocao</span>" : "") +
+    (p.promo_price ? "<span class=\"badge-promo\">Promoção</span>" : "") +
     "</div>" +
     "<div class=\"info\">" +
     "<div class=\"pname\">"+esc(p.name)+"</div>" +
@@ -141,6 +188,7 @@ function productCardHtml(p){
 function renderHome(categoryFilter){
   var top = "<header class=\"topbar\"><div class=\"topbar-inner\">" +
     "<h1 onclick=\"window.location.hash='#home'\">"+esc(STORE_NAME)+"</h1>" +
+    "<button class=\"cart-btn\" onclick=\"toggleCart(true)\">🛒<span class=\"cart-badge\" id=\"cart-badge\">0</span></button>" +
     "<div class=\"searchbox\"><input id=\"search-input\" placeholder=\"Buscar produtos...\" oninput=\"onSearchInput(this.value)\"></div>" +
     "</div></header>";
 
@@ -149,7 +197,7 @@ function renderHome(categoryFilter){
   var categories = [];
   products.forEach(function(p){ if(p.category && categories.indexOf(p.category)===-1) categories.push(p.category); });
 
-  var hero = "<div class=\"hero\"><h2>Confira nossas pecas</h2><p>Novidades toda semana, direto da Korpa pra voce.</p></div>";
+  var hero = "<div class=\"hero\"><h2>Confira nossas peças</h2><p>Novidades toda semana, direto da Korpa para você.</p></div>";
 
   var body = "";
 
@@ -186,10 +234,10 @@ function renderHome(categoryFilter){
     body += "<div class=\"section-title\"><h3>Destaques</h3></div><div class=\"grid\">"+featured.map(productCardHtml).join("")+"</div>";
   }
   if(promos.length){
-    body += "<div class=\"section-title\"><h3>Promocoes</h3></div><div class=\"grid\">"+promos.map(productCardHtml).join("")+"</div>";
+    body += "<div class=\"section-title\"><h3>Promoções</h3></div><div class=\"grid\">"+promos.map(productCardHtml).join("")+"</div>";
   }
-  body += "<div class=\"section-title\"><h3>Lancamentos</h3></div>" +
-    (recent.length ? ("<div class=\"grid\">"+recent.map(productCardHtml).join("")+"</div>") : "<div class=\"empty\">Nenhum produto publicado no catalogo ainda.</div>");
+  body += "<div class=\"section-title\"><h3>Lançamentos</h3></div>" +
+    (recent.length ? ("<div class=\"grid\">"+recent.map(productCardHtml).join("")+"</div>") : "<div class=\"empty\">Nenhum produto publicado no catálogo ainda.</div>");
   body += "</div>";
 
   document.getElementById("app").innerHTML = top + hero + body + renderFooter();
@@ -204,13 +252,13 @@ function renderFilterBar(activeCategory, categories){
 }
 
 function renderFooter(){
-  return "<div class=\"footer\">"+esc(STORE_NAME)+" &middot; Catalogo online</div>";
+  return "<div class=\"footer\">"+esc(STORE_NAME)+" &middot; Catálogo online</div>";
 }
 
 var searchDebounce = null;
 function onSearchInput(val){
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(function(){ renderHome(null); document.getElementById("search-input").focus(); document.getElementById("search-input").value = val; document.getElementById("search-input").setSelectionRange(val.length,val.length); }, 200);
+  searchDebounce = setTimeout(function(){ renderHome(null); renderCartBadge(); document.getElementById("search-input").focus(); document.getElementById("search-input").value = val; document.getElementById("search-input").setSelectionRange(val.length,val.length); }, 200);
 }
 
 /* ---------- PRODUCT PAGE ---------- */
@@ -219,15 +267,17 @@ function renderProductPage(id){
   var p = products.find(function(x){ return x.id===id; });
   var top = "<header class=\"topbar\"><div class=\"topbar-inner\">" +
     "<h1 onclick=\"window.location.hash='#home'\">"+esc(STORE_NAME)+"</h1>" +
+    "<button class=\"cart-btn\" onclick=\"toggleCart(true)\">🛒<span class=\"cart-badge\" id=\"cart-badge\">0</span></button>" +
     "<div class=\"searchbox\"><input placeholder=\"Buscar produtos...\" onfocus=\"window.location.hash='#home'\"></div>" +
     "</div></header>";
 
   if(!p){
-    document.getElementById("app").innerHTML = top + "<div class=\"wrap\"><div class=\"empty\">Produto nao encontrado ou nao esta mais disponivel.</div></div>" + renderFooter();
+    document.getElementById("app").innerHTML = top + "<div class=\"wrap\"><div class=\"empty\">Produto não encontrado ou não está mais disponível.</div></div>" + renderFooter();
     return;
   }
 
   galleryIndex = 0;
+  selectedVariationIdx = null;
   var images = (p.images && p.images.length) ? p.images : [null];
 
   var related = visibleProducts(products.filter(function(x){ return x.id!==p.id && x.category && x.category===p.category; })).slice(0,6);
@@ -235,7 +285,7 @@ function renderProductPage(id){
   document.title = p.name + " - " + STORE_NAME;
 
   var body = "<div class=\"wrap\">" +
-    "<span class=\"backlink\" onclick=\"window.location.hash='#home'\">&larr; Voltar ao catalogo</span>" +
+    "<span class=\"backlink\" onclick=\"window.location.hash='#home'\">&larr; Voltar ao catálogo</span>" +
     "<div class=\"detail\">" +
     "<div>" +
     "<div class=\"gallery-main\" id=\"gallery-main\">" + (images[0] ? ("<img src=\""+esc(images[0])+"\" id=\"gallery-main-img\">") : "<span class=\"noimg\" style=\"display:flex;align-items:center;justify-content:center;height:100%;\">sem foto</span>") + "</div>" +
@@ -246,18 +296,20 @@ function renderProductPage(id){
     "<div class=\"muted\">"+esc(p.category||"")+(p.brand?(" &middot; "+esc(p.brand)):"")+"</div>" +
     "<div class=\"price\">" + (p.promo_price ? ("<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price)) : brl(p.price)) + "</div>" +
     (!p.in_stock ? "<div style=\"color:var(--danger);font-weight:bold;\">Sem estoque no momento</div>" : "") +
-    ((p.variations && p.variations.length) ? ("<div class=\"sizerow\">"+p.variations.map(function(v){
-      return "<span class=\"sizechip"+(v.available?"":" unavailable")+"\">"+esc(v.size||"")+(v.color?(" / "+esc(v.color)):"")+"</span>";
+    ((p.variations && p.variations.length) ? ("<div class=\"sizerow\">"+p.variations.map(function(v,vi){
+      return "<span class=\"sizechip"+(v.available?"":" unavailable")+"\" data-vi=\""+vi+"\" onclick=\""+(v.available?("selectVariation("+vi+")"):"")+"\">"+colorDotHtml(v.color)+esc(v.size||"")+(v.color?(" / "+esc(v.color)):"")+"</span>";
     }).join("")+"</div>") : "") +
     (p.description ? ("<p>"+esc(p.description).replace(/\n/g,"<br>")+"</p>") : "") +
-    (p.specs ? ("<h3 style=\"font-size:15px;margin-top:16px;\">Especificacoes</h3><p class=\"muted\">"+esc(p.specs).replace(/\n/g,"<br>")+"</p>") : "") +
+    (p.specs ? ("<h3 style=\"font-size:15px;margin-top:16px;\">Especificações</h3><p class=\"muted\">"+esc(p.specs).replace(/\n/g,"<br>")+"</p>") : "") +
+    (p.in_stock ? ("<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>") : "") +
     "<div>" +
-    (WHATSAPP_NUMBER ? ("<button class=\"actionbtn\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
+    (p.in_stock ? ("<button class=\"actionbtn\" onclick=\"addToCart('"+esc(p.id)+"')\">Adicionar ao carrinho</button>") : "") +
+    (WHATSAPP_NUMBER ? ("<button class=\"actionbtn ghost\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
     "<button class=\"actionbtn ghost\" onclick=\"shareProduct('"+esc(p.name).replace(/'/g,"")+"')\">Compartilhar</button>" +
     "</div>" +
     "</div>" +
     "</div>" +
-    (related.length ? ("<div class=\"section-title\"><h3>Voce tambem pode gostar</h3></div><div class=\"grid\">"+related.map(productCardHtml).join("")+"</div>") : "") +
+    (related.length ? ("<div class=\"section-title\"><h3>Você também pode gostar</h3></div><div class=\"grid\">"+related.map(productCardHtml).join("")+"</div>") : "") +
     "</div>";
 
   document.getElementById("app").innerHTML = top + body + renderFooter();
@@ -272,7 +324,7 @@ function setGalleryImage(idx){
   document.querySelectorAll(".gallery-thumbs img").forEach(function(img,i){ img.classList.toggle("active", i===idx); });
 }
 function contactWhatsapp(productName){
-  var msg = encodeURIComponent("Ola! Tenho interesse na peca: " + productName);
+  var msg = encodeURIComponent("Olá! Tenho interesse na peça: " + productName);
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+msg, "_blank");
 }
 function shareProduct(productName){
@@ -283,6 +335,201 @@ function shareProduct(productName){
     navigator.clipboard.writeText(url).then(function(){ alert("Link copiado!"); }).catch(function(){ prompt("Copie o link:", url); });
   }
 }
+
+
+/* ---------- CART ---------- */
+function colorNameToHex(name){
+  if(!name) return null;
+  var n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  var map = [
+    [["marinho"], "#1b2a4a"],
+    [["preto","black"], "#111111"],
+    [["off white","offwhite","branco"], "#f5f5f2"],
+    [["cinza","grafite","chumbo"], "#8a8a8a"],
+    [["azul"], "#2f5aa8"],
+    [["vinho","bordo","vermelho"], "#8b2635"],
+    [["verde"], "#2f6e46"],
+    [["amarelo"], "#e0c341"],
+    [["rosa","pink"], "#e2879e"],
+    [["roxo","lilas","lavanda"], "#7a5aa8"],
+    [["laranja"], "#d97b34"],
+    [["bege"], "#d8c3a0"],
+    [["marrom","caramelo","chocolate"], "#6b4a34"],
+    [["nude"], "#dcb28c"],
+    [["dourado","ouro"], "#c9a227"],
+    [["prata","prateado"], "#b8bcc2"],
+    [["caqui","khaki"], "#a89f6b"],
+    [["jeans","denim"], "#4c6b8a"]
+  ];
+  for(var i=0;i<map.length;i++){
+    for(var k=0;k<map[i][0].length;k++){
+      if(n.indexOf(map[i][0][k])>-1) return map[i][1];
+    }
+  }
+  return null;
+}
+function colorDotHtml(colorName){
+  var hex = colorNameToHex(colorName);
+  return hex ? ("<span class=\"color-dot\" style=\"background:"+hex+";\"></span>") : "";
+}
+
+var cart = [];
+try { cart = JSON.parse(localStorage.getItem("korpa_cart") || "[]"); } catch(e){ cart = []; }
+var selectedVariationIdx = null;
+
+function saveCart(){ localStorage.setItem("korpa_cart", JSON.stringify(cart)); }
+function cartCount(){ return cart.reduce(function(s,i){ return s+i.qty; }, 0); }
+function cartTotal(){ return cart.reduce(function(s,i){ return s+i.qty*i.unitPrice; }, 0); }
+
+function stepQty(delta){
+  var el = document.getElementById("qty-input");
+  if(!el) return;
+  var v = (parseInt(el.value,10)||1) + delta;
+  if(v<1) v = 1;
+  if(v>99) v = 99;
+  el.value = v;
+}
+
+function selectVariation(idx){
+  var p = currentProduct();
+  if(!p || !p.variations || !p.variations[idx] || !p.variations[idx].available) return;
+  selectedVariationIdx = idx;
+  document.querySelectorAll(".sizechip").forEach(function(el){
+    el.classList.toggle("selected", Number(el.getAttribute("data-vi"))===idx);
+  });
+}
+
+function currentProduct(){
+  var hash = window.location.hash || "";
+  if(hash.indexOf("#produto/")!==0) return null;
+  var id = hash.replace("#produto/","");
+  return products.find(function(x){ return x.id===id; }) || null;
+}
+
+function addToCart(productId){
+  var p = products.find(function(x){ return x.id===productId; });
+  if(!p) return;
+  if(!p.in_stock){ showToast("Produto sem estoque no momento."); return; }
+  var variation = null;
+  var colorRaw = null;
+  if(p.variations && p.variations.length){
+    if(selectedVariationIdx===null || selectedVariationIdx===undefined){ showToast("Selecione um tamanho/cor antes de adicionar."); return; }
+    var v = p.variations[selectedVariationIdx];
+    if(!v || !v.available){ showToast("Essa opção está indisponível."); return; }
+    variation = (v.size||"") + (v.color ? (" / "+v.color) : "");
+    colorRaw = v.color || null;
+  }
+  var qtyEl = document.getElementById("qty-input");
+  var qty = qtyEl ? (parseInt(qtyEl.value,10)||1) : 1;
+  var key = p.id + "|" + (variation||"");
+  var existing = cart.find(function(c){ return c.key===key; });
+  if(existing){ existing.qty += qty; } else {
+    cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price||p.price), variation:variation, color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
+  }
+  saveCart();
+  renderCartBadge(true);
+  showToast("Produto adicionado ao carrinho!");
+}
+
+function updateCartQty(idx, delta){
+  if(!cart[idx]) return;
+  cart[idx].qty += delta;
+  if(cart[idx].qty<=0) cart.splice(idx,1);
+  saveCart();
+  renderCartItems();
+  renderCartBadge();
+}
+function removeCartItem(idx){
+  cart.splice(idx,1);
+  saveCart();
+  renderCartItems();
+  renderCartBadge();
+}
+
+function cartItemHtml(item, idx){
+  return "<div class=\"cart-item\">" +
+    (item.image ? ("<img src=\""+esc(item.image)+"\" class=\"ci-img\">") : "<div class=\"ci-img\"></div>") +
+    "<div class=\"ci-info\">" +
+    "<div class=\"ci-name\">"+esc(item.name)+"</div>" +
+    (item.variation ? ("<div class=\"ci-variation muted\">"+colorDotHtml(item.color)+esc(item.variation)+"</div>") : "") +
+    "<div class=\"ci-price\">"+brl(item.unitPrice)+"</div>" +
+    "<div class=\"ci-qtyrow\">" +
+    "<button onclick=\"updateCartQty("+idx+",-1)\">-</button>" +
+    "<span>"+item.qty+"</span>" +
+    "<button onclick=\"updateCartQty("+idx+",1)\">+</button>" +
+    "<span class=\"ci-remove\" onclick=\"removeCartItem("+idx+")\">Remover</span>" +
+    "</div></div></div>";
+}
+
+function renderCartItems(){
+  var wrap = document.getElementById("cart-items");
+  if(!wrap) return;
+  wrap.innerHTML = cart.length ? cart.map(cartItemHtml).join("") : "<div class=\"empty\">Seu carrinho está vazio.</div>";
+  var totalEl = document.getElementById("cart-total");
+  if(totalEl) totalEl.textContent = brl(cartTotal());
+  var btn = document.getElementById("cart-checkout-btn");
+  if(btn) btn.disabled = cart.length===0;
+}
+
+function renderCartBadge(bump){
+  var badge = document.getElementById("cart-badge");
+  if(!badge) return;
+  var count = cartCount();
+  badge.textContent = count;
+  badge.style.display = count>0 ? "flex" : "none";
+  if(bump){
+    badge.classList.remove("bump");
+    void badge.offsetWidth;
+    badge.classList.add("bump");
+  }
+}
+
+function toggleCart(open){
+  var drawer = document.getElementById("cart-drawer");
+  var overlay = document.getElementById("cart-overlay");
+  if(!drawer || !overlay) return;
+  drawer.classList.toggle("open", open);
+  overlay.classList.toggle("open", open);
+  if(open) renderCartItems();
+}
+
+function showToast(msg){
+  var toast = document.getElementById("toast");
+  if(!toast) return;
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(function(){ toast.classList.remove("show"); }, 2500);
+}
+
+function checkoutCart(){
+  if(!cart.length) return;
+  if(!WHATSAPP_NUMBER){ showToast("WhatsApp não configurado para finalizar pedidos."); return; }
+  var lines = cart.map(function(i){
+    return "- "+i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+" - "+brl(i.unitPrice*i.qty);
+  });
+  var msg = "Olá! Gostaria de finalizar este pedido:\n\n" + lines.join("\n") + "\n\nTotal: " + brl(cartTotal());
+  window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
+  cart = [];
+  saveCart();
+  renderCartItems();
+  renderCartBadge();
+  toggleCart(false);
+  showToast("Pedido enviado! Aguarde a confirmação pelo WhatsApp.");
+}
+
+document.body.insertAdjacentHTML("beforeend",
+  "<div class=\"cart-overlay\" id=\"cart-overlay\" onclick=\"toggleCart(false)\"></div>" +
+  "<div class=\"cart-drawer\" id=\"cart-drawer\">" +
+  "<div class=\"cart-drawer-head\"><h3>Seu carrinho</h3><span class=\"cart-close\" onclick=\"toggleCart(false)\">&times;</span></div>" +
+  "<div class=\"cart-items\" id=\"cart-items\"></div>" +
+  "<div class=\"cart-footer\">" +
+  "<div class=\"cart-subtotal\"><span>Total</span><span id=\"cart-total\">R$ 0,00</span></div>" +
+  "<button class=\"actionbtn\" id=\"cart-checkout-btn\" onclick=\"checkoutCart()\" disabled>Finalizar pedido</button>" +
+  "</div></div>" +
+  "<div class=\"toast\" id=\"toast\"></div>"
+);
+renderCartBadge();
 
 /* ---------- BOOTSTRAP + LIGHT AUTO-REFRESH ---------- */
 
