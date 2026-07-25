@@ -114,6 +114,22 @@ a{color:inherit;text-decoration:none;}
 .color-dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.2);flex-shrink:0;}
 .sizechip{display:inline-flex;align-items:center;}
 .ci-variation{display:flex;align-items:center;}
+
+.pix-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;opacity:0;pointer-events:none;transition:opacity .25s ease;}
+.pix-modal-overlay.show{opacity:1;pointer-events:auto;}
+.pix-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-40%);width:92%;max-width:380px;background:var(--card);border-radius:12px;z-index:300;opacity:0;pointer-events:none;transition:all .25s ease;max-height:86vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3);}
+.pix-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%);}
+.pix-modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);}
+.pix-modal-head h3{font-size:17px;}
+.pix-modal-body{padding:16px 18px;}
+.pix-modal-body label{display:block;font-size:13px;margin:10px 0 4px;color:var(--muted);}
+.pix-modal-body input{width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:14px;}
+.actionbtn.pix{background:#32BCAD;}
+.pix-error{color:var(--danger);font-size:13px;margin-top:8px;min-height:16px;}
+.pix-qr-wrap{text-align:center;margin:10px 0;}
+.pix-qr-wrap img{width:200px;height:200px;border:1px solid var(--border);border-radius:8px;}
+#pix-copy-text{width:100%;height:70px;font-size:11px;padding:8px;border:1px solid var(--border);border-radius:6px;resize:none;margin-top:8px;}
+.pix-status{margin-top:12px;font-size:13px;text-align:center;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -126,6 +142,9 @@ var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var STORE_NAME = "Korpa";
 var WHATSAPP_NUMBER = "5585920064349"; // ex: "5585999999999" - opcional, deixa vazio para ocultar o botão de interesse via WhatsApp
+var EDGE_FUNCTIONS_BASE = SUPABASE_URL + "/functions/v1";
+var pixPollTimer = null;
+var pixCurrentPaymentId = null;
 
 var products = [];
 var loaded = false;
@@ -479,6 +498,8 @@ function renderCartItems(){
   if(totalEl) totalEl.textContent = brl(cartTotal());
   var btn = document.getElementById("cart-checkout-btn");
   if(btn) btn.disabled = cart.length===0;
+  var pixBtn = document.getElementById("pix-checkout-btn");
+  if(pixBtn) pixBtn.disabled = cart.length===0;
 }
 
 function renderCartBadge(bump){
@@ -528,6 +549,111 @@ function checkoutCart(){
   showToast("Pedido enviado! Aguarde a confirmação pelo WhatsApp.");
 }
 
+function openPixModal(){
+  if(!cart.length) return;
+  document.getElementById("pix-modal-overlay").classList.add("show");
+  document.getElementById("pix-modal").classList.add("open");
+  document.getElementById("pix-step-form").style.display = "";
+  document.getElementById("pix-step-qr").style.display = "none";
+  document.getElementById("pix-error").textContent = "";
+}
+function closePixModal(){
+  document.getElementById("pix-modal-overlay").classList.remove("show");
+  document.getElementById("pix-modal").classList.remove("open");
+  stopPixPolling();
+}
+function validaCPF(cpf){
+  cpf = String(cpf||"").replace(/\D/g,"");
+  return cpf.length===11;
+}
+function submitPixPayment(){
+  var name = document.getElementById("pix-name").value.trim();
+  var email = document.getElementById("pix-email").value.trim();
+  var cpf = document.getElementById("pix-cpf").value.trim();
+  var errEl = document.getElementById("pix-error");
+  errEl.textContent = "";
+  if(!name){ errEl.textContent = "Informe seu nome completo."; return; }
+  if(!email || email.indexOf("@")===-1){ errEl.textContent = "Informe um email valido."; return; }
+  if(!validaCPF(cpf)){ errEl.textContent = "Informe um CPF valido (11 digitos)."; return; }
+
+  var items = cart.map(function(it){
+    return { id: it.id, name: it.name, unitPrice: it.unitPrice, variation: it.variation, color: it.color, qty: it.qty };
+  });
+  var amount = cartTotal();
+
+  var btn = document.querySelector("#pix-step-form .actionbtn");
+  if(btn){ btn.disabled = true; btn.textContent = "Gerando..."; }
+
+  fetch(EDGE_FUNCTIONS_BASE + "/pix-create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": "Bearer " + SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({
+      amount: amount,
+      description: "Pedido Korpa",
+      customer: { name: name, email: email, cpf: cpf },
+      items: items
+    })
+  }).then(function(r){ return r.json().then(function(data){ return {ok:r.ok, data:data}; }); })
+    .then(function(res){
+      if(btn){ btn.disabled = false; btn.textContent = "Gerar Pix"; }
+      if(!res.ok){
+        errEl.textContent = (res.data && res.data.error) || "Nao foi possivel gerar o pagamento. Tente novamente.";
+        return;
+      }
+      pixCurrentPaymentId = res.data.payment_id;
+      document.getElementById("pix-qr-img").src = "data:image/png;base64," + res.data.qr_code_base64;
+      document.getElementById("pix-copy-text").value = res.data.qr_code;
+      document.getElementById("pix-step-form").style.display = "none";
+      document.getElementById("pix-step-qr").style.display = "";
+      document.getElementById("pix-status-msg").textContent = "Aguardando confirmacao do pagamento...";
+      startPixPolling();
+    }).catch(function(){
+      if(btn){ btn.disabled = false; btn.textContent = "Gerar Pix"; }
+      errEl.textContent = "Erro de conexao. Tente novamente.";
+    });
+}
+function startPixPolling(){
+  stopPixPolling();
+  var attempts = 0;
+  pixPollTimer = setInterval(function(){
+    attempts++;
+    if(!pixCurrentPaymentId) return;
+    fetch(EDGE_FUNCTIONS_BASE + "/pix-status?payment_id=" + encodeURIComponent(pixCurrentPaymentId), {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY }
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(data && data.status === "approved"){
+        stopPixPolling();
+        document.getElementById("pix-status-msg").textContent = "Pagamento confirmado! Obrigado pela compra.";
+        cart = [];
+        saveCart();
+        renderCartItems();
+        renderCartBadge();
+        showToast("Pagamento Pix confirmado!");
+        setTimeout(function(){ closePixModal(); }, 3000);
+      } else if(data && (data.status === "rejected" || data.status === "cancelled")){
+        stopPixPolling();
+        document.getElementById("pix-status-msg").textContent = "Pagamento nao aprovado. Tente novamente ou escolha outra forma de pagamento.";
+      }
+    }).catch(function(){});
+    if(attempts > 200){ stopPixPolling(); }
+  }, 4000);
+}
+function stopPixPolling(){
+  if(pixPollTimer){ clearInterval(pixPollTimer); pixPollTimer = null; }
+}
+function copyPixCode(){
+  var ta = document.getElementById("pix-copy-text");
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  try{ document.execCommand("copy"); showToast("Codigo copiado!"); }catch(e){
+    if(navigator.clipboard){ navigator.clipboard.writeText(ta.value); showToast("Codigo copiado!"); }
+  }
+}
+
 document.body.insertAdjacentHTML("beforeend",
   "<div class=\"cart-overlay\" id=\"cart-overlay\" onclick=\"toggleCart(false)\"></div>" +
   "<div class=\"cart-drawer\" id=\"cart-drawer\">" +
@@ -536,8 +662,29 @@ document.body.insertAdjacentHTML("beforeend",
   "<div class=\"cart-footer\">" +
   "<div class=\"cart-subtotal\"><span>Total</span><span id=\"cart-total\">R$ 0,00</span></div>" +
   "<button class=\"actionbtn\" id=\"cart-checkout-btn\" onclick=\"checkoutCart()\" disabled>Finalizar pedido</button>" +
+  "<button class=\"actionbtn pix\" id=\"pix-checkout-btn\" onclick=\"openPixModal()\" disabled>Pagar com Pix</button>" +
   "</div></div>" +
-  "<div class=\"toast\" id=\"toast\"></div>"
+  "<div class=\"toast\" id=\"toast\"></div>" +
+  "<div class=\"pix-modal-overlay\" id=\"pix-modal-overlay\" onclick=\"closePixModal()\"></div>" +
+  "<div class=\"pix-modal\" id=\"pix-modal\">" +
+  "<div class=\"pix-modal-head\"><h3>Pagamento via Pix</h3><span class=\"cart-close\" onclick=\"closePixModal()\">&times;</span></div>" +
+  "<div class=\"pix-modal-body\">" +
+  "<div id=\"pix-step-form\">" +
+  "<label>Nome completo</label><input id=\"pix-name\" type=\"text\" placeholder=\"Seu nome completo\">" +
+  "<label>Email</label><input id=\"pix-email\" type=\"email\" placeholder=\"seu@email.com\">" +
+  "<label>CPF</label><input id=\"pix-cpf\" type=\"text\" placeholder=\"000.000.000-00\" maxlength=\"14\">" +
+  "<button class=\"actionbtn pix\" onclick=\"submitPixPayment()\">Gerar Pix</button>" +
+  "<div class=\"pix-error\" id=\"pix-error\"></div>" +
+  "</div>" +
+  "<div id=\"pix-step-qr\" style=\"display:none;\">" +
+  "<p class=\"muted\" style=\"text-align:center;\">Escaneie o QR code no app do seu banco ou copie o codigo:</p>" +
+  "<div class=\"pix-qr-wrap\"><img id=\"pix-qr-img\" src=\"\" alt=\"QR Code Pix\"></div>" +
+  "<textarea id=\"pix-copy-text\" readonly></textarea>" +
+  "<button class=\"actionbtn pix\" onclick=\"copyPixCode()\">Copiar codigo</button>" +
+  "<div class=\"pix-status\" id=\"pix-status-msg\"></div>" +
+  "</div>" +
+  "</div>" +
+  "</div>"
 );
 renderCartBadge();
 
