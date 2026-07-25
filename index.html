@@ -133,6 +133,21 @@ a{color:inherit;text-decoration:none;}
 .pix-qr-wrap img{width:200px;height:200px;border:1px solid var(--border);border-radius:8px;}
 #pix-copy-text{width:100%;height:70px;font-size:11px;padding:8px;border:1px solid var(--border);border-radius:6px;resize:none;margin-top:8px;}
 .pix-status{margin-top:12px;font-size:13px;text-align:center;color:var(--muted);}
+
+.avise-btn{margin-top:6px;width:100%;padding:6px 8px;font-size:11.5px;border:1px solid var(--accent);background:#fff;color:var(--accent-dark);border-radius:8px;cursor:pointer;}
+.avise-btn:hover{background:var(--accent);color:#fff;}
+.actionbtn.avise{background:#fff;color:var(--accent-dark);border:1px solid var(--accent-dark);}
+.avise-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;opacity:0;pointer-events:none;transition:opacity .25s ease;}
+.avise-modal-overlay.show{opacity:1;pointer-events:auto;}
+.avise-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-40%);width:92%;max-width:380px;background:var(--card);border-radius:12px;z-index:300;opacity:0;pointer-events:none;transition:all .25s ease;max-height:86vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3);}
+.avise-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%);}
+.avise-modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);}
+.avise-modal-head h3{font-size:17px;margin:0;}
+.avise-modal-body{padding:16px 18px;}
+.avise-modal-body label{display:block;font-size:13px;margin:10px 0 4px;color:var(--muted);}
+.avise-modal-body input{width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:14px;box-sizing:border-box;}
+.avise-error{color:var(--danger);font-size:13px;margin-top:8px;min-height:16px;}
+.avise-success{color:#1b7f3a;font-size:14px;padding:6px 0;}
 </style>
 </head>
 <body>
@@ -202,6 +217,7 @@ function productCardHtml(p){
     "<div class=\"pname\">"+esc(p.name)+"</div>" +
     "<div class=\"pcat\">"+esc(p.category||"")+(p.brand?(" &middot; "+esc(p.brand)):"")+"</div>" +
     "<div class=\"pprice\">"+priceHtml+"</div>" +
+    (!p.in_stock ? ("<button class=\"avise-btn\" onclick=\"event.preventDefault();event.stopPropagation();openAviseModal('"+esc(p.id)+"','"+esc(p.name).replace(/'/g,"")+"')\">Avise-me</button>") : "") +
     "</div></a>";
 }
 
@@ -326,7 +342,8 @@ function renderProductPage(id){
     (p.in_stock ? ("<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>") : "") +
     "<div>" +
     (p.in_stock ? ("<button class=\"actionbtn\" onclick=\"addToCart('"+esc(p.id)+"')\">Adicionar ao carrinho</button>") : "") +
-    (WHATSAPP_NUMBER ? ("<button class=\"actionbtn ghost\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
+    ((!p.in_stock ? ("<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(p.id)+"','"+esc(p.name).replace(/'/g,"")+"')\">Avise-me quando chegar</button>") : "") +
+    WHATSAPP_NUMBER ? ("<button class=\"actionbtn ghost\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
     "<button class=\"actionbtn ghost\" onclick=\"shareProduct('"+esc(p.name).replace(/'/g,"")+"')\">Compartilhar</button>" +
     "</div>" +
     "</div>" +
@@ -565,6 +582,46 @@ function closePixModal(){
   document.getElementById("pix-modal").classList.remove("open");
   stopPixPolling();
 }
+var aviseCurrentProduct = null;
+function openAviseModal(productId, productName){
+  aviseCurrentProduct = {id: productId, name: productName};
+  document.getElementById("avise-product-name").textContent = "Produto: " + productName;
+  document.getElementById("avise-whatsapp").value = "";
+  document.getElementById("avise-error").textContent = "";
+  document.getElementById("avise-form-wrap").style.display = "";
+  document.getElementById("avise-success").style.display = "none";
+  var btn = document.getElementById("avise-submit-btn");
+  btn.disabled = false;
+  btn.textContent = "Avisar";
+  document.getElementById("avise-modal-overlay").classList.add("show");
+  document.getElementById("avise-modal").classList.add("open");
+}
+function closeAviseModal(){
+  document.getElementById("avise-modal-overlay").classList.remove("show");
+  document.getElementById("avise-modal").classList.remove("open");
+}
+async function submitAviseMe(){
+  var raw = document.getElementById("avise-whatsapp").value.replace(/\D/g,"");
+  var errEl = document.getElementById("avise-error");
+  errEl.textContent = "";
+  if(raw.length < 10 || raw.length > 11){
+    errEl.textContent = "Digite um WhatsApp valido com DDD.";
+    return;
+  }
+  var btn = document.getElementById("avise-submit-btn");
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  var res = await sb.from("stock_alerts").insert({product_id: aviseCurrentProduct.id, product_name: aviseCurrentProduct.name, whatsapp: raw});
+  btn.disabled = false;
+  btn.textContent = "Avisar";
+  if(res.error && res.error.code !== "23505"){
+    errEl.textContent = "Erro ao enviar. Tente novamente.";
+    return;
+  }
+  document.getElementById("avise-form-wrap").style.display = "none";
+  document.getElementById("avise-success").style.display = "block";
+  setTimeout(closeAviseModal, 3000);
+}
 function validaCPF(cpf){
   cpf = String(cpf||"").replace(/\D/g,"");
   return cpf.length===11;
@@ -688,7 +745,20 @@ document.body.insertAdjacentHTML("beforeend",
   "</div>" +
   "</div>" +
   "</div>"
-);
+ +
+  "<div class=\"avise-modal-overlay\" id=\"avise-modal-overlay\" onclick=\"closeAviseModal()\"></div>" +
+  "<div class=\"avise-modal\" id=\"avise-modal\">" +
+  "<div class=\"avise-modal-head\"><h3>Avise-me quando chegar</h3><span class=\"cart-close\" onclick=\"closeAviseModal()\">&times;</span></div>" +
+  "<div class=\"avise-modal-body\">" +
+  "<div id=\"avise-form-wrap\">" +
+  "<p style=\"font-size:13px;color:var(--muted);margin:0 0 10px;\" id=\"avise-product-name\"></p>" +
+  "<label>Seu WhatsApp (com DDD)</label><input id=\"avise-whatsapp\" type=\"tel\" placeholder=\"11999999999\" maxlength=\"11\">" +
+  "<button class=\"actionbtn\" id=\"avise-submit-btn\" onclick=\"submitAviseMe()\">Avisar</button>" +
+  "<div class=\"avise-error\" id=\"avise-error\"></div>" +
+  "</div>" +
+  "<div class=\"avise-success\" id=\"avise-success\" style=\"display:none;\">Pronto! Você será avisado no WhatsApp assim que este produto voltar ao estoque.</div>" +
+  "</div>" +
+  "</div>");
 renderCartBadge();
 
 /* ---------- BOOTSTRAP + LIGHT AUTO-REFRESH ---------- */
