@@ -342,8 +342,8 @@ function renderProductPage(id){
     (p.in_stock ? ("<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>") : "") +
     "<div>" +
     (p.in_stock ? ("<button class=\"actionbtn\" onclick=\"addToCart('"+esc(p.id)+"')\">Adicionar ao carrinho</button>") : "") +
-    ((!p.in_stock ? ("<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(p.id)+"','"+esc(p.name).replace(/'/g,"")+"')\">Avise-me quando chegar</button>") : "") +
-    WHATSAPP_NUMBER ? ("<button class=\"actionbtn ghost\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
+    (!p.in_stock ? ("<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(p.id)+"','"+esc(p.name).replace(/'/g,"")+"')\">Avise-me quando chegar</button>") : "") +
+    (WHATSAPP_NUMBER ? ("<button class=\"actionbtn ghost\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
     "<button class=\"actionbtn ghost\" onclick=\"shareProduct('"+esc(p.name).replace(/'/g,"")+"')\">Compartilhar</button>" +
     "</div>" +
     "</div>" +
