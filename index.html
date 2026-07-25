@@ -204,9 +204,15 @@ window.addEventListener("hashchange", route);
 function visibleProducts(list){
   return list.filter(function(p){ return p.in_stock || !p.hide_when_out_of_stock; });
 }
+function priceHtmlFor(p, v){
+  if(p.promo_price){ return "<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price); }
+  if(v && v.price!=null){ return brl(v.price); }
+  if(p.price_min!=null && p.price_max!=null && p.price_min!==p.price_max){ return "A partir de "+brl(p.price_min); }
+  return brl(p.price);
+}
 function productCardHtml(p){
   var img = (p.images && p.images.length) ? p.images[0] : null;
-  var priceHtml = p.promo_price ? ("<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price)) : brl(p.price);
+  var priceHtml = priceHtmlFor(p, null);
   return "<a class=\"pcard\" href=\"#produto/"+encodeURIComponent(p.id)+"\">" +
     "<div class=\"imgwrap\">" +
     (img ? ("<img src=\""+esc(img)+"\" alt=\""+esc(p.name)+"\" loading=\"lazy\">") : "<span class=\"noimg\">sem foto</span>") +
@@ -332,10 +338,10 @@ function renderProductPage(id){
     "<div>" +
     "<h2>"+esc(p.name)+"</h2>" +
     "<div class=\"muted\">"+esc(p.category||"")+(p.brand?(" &middot; "+esc(p.brand)):"")+"</div>" +
-    "<div class=\"price\">" + (p.promo_price ? ("<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price)) : brl(p.price)) + "</div>" +
+    "<div class=\"price\" id=\"detail-price\">" + priceHtmlFor(p, null) + "</div>" +
     (!p.in_stock ? "<div style=\"color:var(--danger);font-weight:bold;\">Sem estoque no momento</div>" : "") +
     ((p.variations && p.variations.length) ? ("<div class=\"sizerow\">"+p.variations.map(function(v,vi){
-      return "<span class=\"sizechip"+(v.available?"":" unavailable")+"\" data-vi=\""+vi+"\" onclick=\""+(v.available?("selectVariation("+vi+")"):"")+"\">"+colorDotHtml(v.color)+esc(v.size||"")+(v.color?(" / "+esc(v.color)):"")+"</span>";
+      return "<span class=\"sizechip"+(v.available?"":" unavailable")+"\" data-vi=\""+vi+"\" onclick=\""+(v.available?("selectVariation("+vi+")"):"")+"\">"+colorDotHtml(v.color)+esc(v.size||"")+(v.color?(" / "+esc(v.color)):"")+((v.price!=null && p.price_min!=null && p.price_max!=null && p.price_min!==p.price_max && !p.promo_price)?(" · "+brl(v.price)):"")+"</span>";
     }).join("")+"</div>") : "") +
     (p.description ? ("<p>"+esc(p.description).replace(/\n/g,"<br>")+"</p>") : "") +
     (p.specs ? ("<h3 style=\"font-size:15px;margin-top:16px;\">Especificações</h3><p class=\"muted\">"+esc(p.specs).replace(/\n/g,"<br>")+"</p>") : "") +
@@ -437,6 +443,8 @@ function selectVariation(idx){
     el.classList.toggle("selected", Number(el.getAttribute("data-vi"))===idx);
   });
   applyColorImage(p, p.variations[idx].color);
+  var priceEl = document.getElementById("detail-price");
+  if(priceEl) priceEl.innerHTML = priceHtmlFor(p, p.variations[idx]);
 }
 function applyColorImage(p, color){
   if(!color) return;
@@ -461,9 +469,10 @@ function addToCart(productId){
   if(!p.in_stock){ showToast("Produto sem estoque no momento."); return; }
   var variation = null;
   var colorRaw = null;
+  var v = null;
   if(p.variations && p.variations.length){
     if(selectedVariationIdx===null || selectedVariationIdx===undefined){ showToast("Selecione um tamanho/cor antes de adicionar."); return; }
-    var v = p.variations[selectedVariationIdx];
+    v = p.variations[selectedVariationIdx];
     if(!v || !v.available){ showToast("Essa opção está indisponível."); return; }
     variation = (v.size||"") + (v.color ? (" / "+v.color) : "");
     colorRaw = v.color || null;
@@ -473,7 +482,7 @@ function addToCart(productId){
   var key = p.id + "|" + (variation||"");
   var existing = cart.find(function(c){ return c.key===key; });
   if(existing){ existing.qty += qty; } else {
-    cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price||p.price), variation:variation, color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
+    cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price || (v && v.price!=null ? v.price : p.price)), variation:variation, color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
   }
   saveCart();
   renderCartBadge(true);
