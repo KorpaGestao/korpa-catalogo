@@ -341,14 +341,12 @@ function renderProductPage(id){
     "<div class=\"price\" id=\"detail-price\">" + priceHtmlFor(p, null) + "</div>" +
     (!p.in_stock ? "<div style=\"color:var(--danger);font-weight:bold;\">Sem estoque no momento</div>" : "") +
     ((p.variations && p.variations.length) ? ("<div class=\"sizerow\">"+p.variations.map(function(v,vi){
-      return "<span class=\"sizechip"+(v.available?"":" unavailable")+"\" data-vi=\""+vi+"\" onclick=\""+(v.available?("selectVariation("+vi+")"):"")+"\">"+colorDotHtml(v.color)+esc(v.size||"")+(v.color?(" / "+esc(v.color)):"")+((v.price!=null && p.price_min!=null && p.price_max!=null && p.price_min!==p.price_max && !p.promo_price)?(" · "+brl(v.price)):"")+"</span>";
+      return "<span class=\"sizechip"+(v.available?"":" unavailable")+"\" data-vi=\""+vi+"\" onclick=\""+"selectVariation("+vi+")"+"\">"+colorDotHtml(v.color)+esc(v.size||"")+(v.color?(" / "+esc(v.color)):"")+((v.price!=null && p.price_min!=null && p.price_max!=null && p.price_min!==p.price_max && !p.promo_price)?(" · "+brl(v.price)):"")+"</span>";
     }).join("")+"</div>") : "") +
     (p.description ? ("<p>"+esc(p.description).replace(/\n/g,"<br>")+"</p>") : "") +
     (p.specs ? ("<h3 style=\"font-size:15px;margin-top:16px;\">Especificações</h3><p class=\"muted\">"+esc(p.specs).replace(/\n/g,"<br>")+"</p>") : "") +
-    (p.in_stock ? ("<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>") : "") +
+    "<div id=\"detail-actions\">" + detailActionsHtml(p, selectedVariationIdx) + "</div>" +
     "<div>" +
-    (p.in_stock ? ("<button class=\"actionbtn\" onclick=\"addToCart('"+esc(p.id)+"')\">Adicionar ao carrinho</button>") : "") +
-    (!p.in_stock ? ("<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(p.id)+"','"+esc(p.name).replace(/'/g,"")+"')\">Avise-me quando chegar</button>") : "") +
     (WHATSAPP_NUMBER ? ("<button class=\"actionbtn ghost\" onclick=\"contactWhatsapp('"+esc(p.name).replace(/'/g,"")+"')\">Tenho interesse</button>") : "") +
     "<button class=\"actionbtn ghost\" onclick=\"shareProduct('"+esc(p.name).replace(/'/g,"")+"')\">Compartilhar</button>" +
     "</div>" +
@@ -435,9 +433,26 @@ function stepQty(delta){
   el.value = v;
 }
 
+function detailActionsHtml(p, idx){
+  var hasVariations = p.variations && p.variations.length;
+  var avail = hasVariations ? (idx!=null && p.variations[idx] ? !!p.variations[idx].available : false) : !!p.in_stock;
+  var html = "";
+  if(avail){
+    html += "<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>";
+    html += "<button class=\"actionbtn\" onclick=\"addToCart('"+esc(p.id)+"')\">Adicionar ao carrinho</button>";
+  } else {
+    var nameForAlert = esc(p.name).replace(/'/g,"");
+    if(hasVariations && idx!=null && p.variations[idx]){
+      var v = p.variations[idx];
+      nameForAlert += " (" + esc(v.size||"") + (v.color ? (" / "+esc(v.color)) : "") + ")";
+    }
+    html += "<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(p.id)+"','"+nameForAlert+"')\">Avise-me quando chegar</button>";
+  }
+  return html;
+}
 function selectVariation(idx){
   var p = currentProduct();
-  if(!p || !p.variations || !p.variations[idx] || !p.variations[idx].available) return;
+  if(!p || !p.variations || !p.variations[idx]) return;
   selectedVariationIdx = idx;
   document.querySelectorAll(".sizechip").forEach(function(el){
     el.classList.toggle("selected", Number(el.getAttribute("data-vi"))===idx);
@@ -445,6 +460,8 @@ function selectVariation(idx){
   applyColorImage(p, p.variations[idx].color);
   var priceEl = document.getElementById("detail-price");
   if(priceEl) priceEl.innerHTML = priceHtmlFor(p, p.variations[idx]);
+  var actionsEl = document.getElementById("detail-actions");
+  if(actionsEl) actionsEl.innerHTML = detailActionsHtml(p, idx);
 }
 function applyColorImage(p, color){
   if(!color) return;
