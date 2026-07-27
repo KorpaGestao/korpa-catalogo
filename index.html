@@ -435,7 +435,7 @@ function stepQty(delta){
 
 function detailActionsHtml(p, idx){
   var hasVariations = p.variations && p.variations.length;
-  var avail = hasVariations ? (idx!=null && p.variations[idx] ? !!p.variations[idx].available : false) : !!p.in_stock;
+  var avail = hasVariations ? (idx!=null && p.variations[idx] ? !!p.variations[idx].available : !!p.in_stock) : !!p.in_stock;
   var html = "";
   if(avail){
     html += "<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>";
