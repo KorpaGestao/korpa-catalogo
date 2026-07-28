@@ -424,12 +424,34 @@ function saveCart(){ localStorage.setItem("korpa_cart", JSON.stringify(cart)); }
 function cartCount(){ return cart.reduce(function(s,i){ return s+i.qty; }, 0); }
 function cartTotal(){ return cart.reduce(function(s,i){ return s+i.qty*i.unitPrice; }, 0); }
 
+function getSelectedStockLimit(){
+  var p = currentProduct();
+  if(!p) return 99;
+  if(p.variations && p.variations.length){
+    var v = (selectedVariationIdx!=null) ? p.variations[selectedVariationIdx] : null;
+    if(v && typeof v.stock === "number") return Math.max(1, v.stock);
+    return 99;
+  }
+  if(typeof p.stock === "number") return Math.max(1, p.stock);
+  return 99;
+}
+function getItemStockLimit(item){
+  var p = products.find(function(x){ return x.id===item.id; });
+  if(!p) return null;
+  if(p.variations && p.variations.length && item.variation){
+    var match = p.variations.find(function(v){ return ((v.size||"") + (v.color?(" / "+v.color):"")) === item.variation; });
+    return (match && typeof match.stock === "number") ? match.stock : null;
+  }
+  if(typeof p.stock === "number") return p.stock;
+  return null;
+}
 function stepQty(delta){
   var el = document.getElementById("qty-input");
   if(!el) return;
+  var max = getSelectedStockLimit();
   var v = (parseInt(el.value,10)||1) + delta;
   if(v<1) v = 1;
-  if(v>99) v = 99;
+  if(v>max) v = max;
   el.value = v;
 }
 
@@ -487,27 +509,44 @@ function addToCart(productId){
   var variation = null;
   var colorRaw = null;
   var v = null;
+  var stockLimit = null;
   if(p.variations && p.variations.length){
     if(selectedVariationIdx===null || selectedVariationIdx===undefined){ showToast("Selecione um tamanho/cor antes de adicionar."); return; }
     v = p.variations[selectedVariationIdx];
     if(!v || !v.available){ showToast("Essa opção está indisponível."); return; }
     variation = (v.size||"") + (v.color ? (" / "+v.color) : "");
     colorRaw = v.color || null;
+    stockLimit = (typeof v.stock === "number") ? v.stock : null;
+  } else if(typeof p.stock === "number"){
+    stockLimit = p.stock;
   }
   var qtyEl = document.getElementById("qty-input");
   var qty = qtyEl ? (parseInt(qtyEl.value,10)||1) : 1;
   var key = p.id + "|" + (variation||"");
   var existing = cart.find(function(c){ return c.key===key; });
+  var already = existing ? existing.qty : 0;
+  var msg = "Produto adicionado ao carrinho!";
+  if(stockLimit!=null){
+    if(already >= stockLimit){ showToast("Você já tem no carrinho a quantidade máxima disponível em estoque."); return; }
+    if((already+qty) > stockLimit){ qty = stockLimit - already; msg = "Quantidade limitada ao estoque disponível ("+stockLimit+")."; }
+  }
   if(existing){ existing.qty += qty; } else {
     cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price || (v && v.price!=null ? v.price : p.price)), variation:variation, color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
   }
   saveCart();
   renderCartBadge(true);
-  showToast("Produto adicionado ao carrinho!");
+  showToast(msg);
 }
 
 function updateCartQty(idx, delta){
   if(!cart[idx]) return;
+  if(delta>0){
+    var limit = getItemStockLimit(cart[idx]);
+    if(limit!=null && cart[idx].qty >= limit){
+      showToast("Quantidade máxima em estoque atingida.");
+      return;
+    }
+  }
   cart[idx].qty += delta;
   if(cart[idx].qty<=0) cart.splice(idx,1);
   saveCart();
