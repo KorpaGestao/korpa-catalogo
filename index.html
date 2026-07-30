@@ -208,6 +208,7 @@ function priceHtmlFor(p, v){
   if(p.promo_price){ return "<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price); }
   if(v && v.price!=null){ return brl(v.price); }
   if(p.price_min!=null && p.price_max!=null && p.price_min!==p.price_max){ return "A partir de "+brl(p.price_min); }
+  if(p.price_min!=null){ return brl(p.price_min); }
   return brl(p.price);
 }
 function productCardHtml(p){
