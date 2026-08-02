@@ -649,6 +649,10 @@ function openPixModal(){
   document.getElementById("pix-step-qr").style.display = "none";
   document.getElementById("pix-error").textContent = "";
   document.getElementById("pix-freight-result").textContent = "";
+      document.getElementById("pix-qr-wrap").style.display = "";
+      document.getElementById("pix-copy-text").style.display = "";
+      document.getElementById("pix-copy-btn").style.display = "";
+      document.getElementById("pix-success-box").style.display = "none";
   updatePixTotalDisplay();
 }
 async function calcularFreteModal(){
@@ -816,13 +820,16 @@ function startPixPolling(){
       var status = res.data ? res.data.status : null;
       if(status === "pago"){
         stopPixPolling();
-        document.getElementById("pix-status-msg").textContent = "Pagamento confirmado! Obrigado pela compra.";
-        cart = [];
-        saveCart();
-        renderCartItems();
-        renderCartBadge();
-        showToast("Pagamento Pix confirmado!");
-        setTimeout(function(){ closePixModal(); }, 3000);
+                  document.getElementById("pix-qr-wrap").style.display = "none";
+                  document.getElementById("pix-copy-text").style.display = "none";
+                  document.getElementById("pix-copy-btn").style.display = "none";
+                  document.getElementById("pix-status-msg").textContent = "";
+                  document.getElementById("pix-success-box").style.display = "";
+                  cart = [];
+                  saveCart();
+                  renderCartItems();
+                  renderCartBadge();
+                  showToast("Pagamento Pix confirmado!");
       } else if(status === "cancelado"){
         stopPixPolling();
         document.getElementById("pix-status-msg").textContent = "Pagamento nao aprovado. Tente novamente ou escolha outra forma de pagamento.";
@@ -872,10 +879,16 @@ document.body.insertAdjacentHTML("beforeend",
   "</div>" +
   "<div id=\"pix-step-qr\" style=\"display:none;\">" +
   "<p class=\"muted\" style=\"text-align:center;\">Escaneie o QR code no app do seu banco ou copie o codigo:</p>" +
-  "<div class=\"pix-qr-wrap\"><img id=\"pix-qr-img\" src=\"\" alt=\"QR Code Pix\"></div>" +
+  "<div class=\"pix-qr-wrap" id="pix-qr-wrap\"><img id=\"pix-qr-img\" src=\"\" alt=\"QR Code Pix\"></div>" +
   "<textarea id=\"pix-copy-text\" readonly></textarea>" +
-  "<button class=\"actionbtn pix\" onclick=\"copyPixCode()\">Copiar codigo</button>" +
+  "<button class=\"actionbtn pix\" id="pix-copy-btn" onclick=\"copyPixCode()\">Copiar codigo</button>" +
   "<div class=\"pix-status\" id=\"pix-status-msg\"></div>" +
+    "<div id=\"pix-success-box\" style=\"display:none;text-align:center;\">" +
+    "<div style=\"font-size:42px;color:#2a6440;line-height:1;\">&#10003;</div>" +
+    "<div style=\"font-size:17px;font-weight:bold;color:#2a6440;margin-top:6px;\">Pagamento confirmado!</div>" +
+    "<div class=\"muted\" style=\"font-size:13px;margin-top:4px;\">Seu pedido foi recebido e ja esta sendo preparado. Obrigado pela compra!</div>" +
+    "<button class=\"actionbtn\" style=\"margin-top:14px;\" onclick=\"closePixModal()\">Fechar</button>" +
+    "</div>" +
   "</div>" +
   "</div>" +
   "</div>"
