@@ -675,7 +675,7 @@ async function calcularFreteModal(){
       resultEl.innerHTML = "<span style=\"color:var(--danger);\">Erro ao calcular frete. Tente novamente.</span>";
       return;
     }
-    var zone = (zonesRes.data||[]).find(function(z){ return (z.ufs||[]).indexOf(uf) > -1; });
+    var zone = (zonesRes.data||[]).find(function(z){ return (z.ufs||[]).indexOf(uf) > -1 && String(z.name||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim() === String(viaCepData.localidade||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim(); });
     if(!zone){
       currentFreight = {value:0, zoneName:null, uf:uf, cidade:viaCepData.localidade, cep:cep, combinarDireto:true};
       resultEl.innerHTML = "Ainda nao calculamos frete automatico pra "+esc(uf)+" - o frete sera combinado direto com a loja apos o pagamento.";
