@@ -538,7 +538,7 @@ function addToCart(productId){
     if((already+qty) > stockLimit){ qty = stockLimit - already; msg = "Quantidade limitada ao estoque disponível ("+stockLimit+")."; }
   }
   if(existing){ existing.qty += qty; } else {
-    cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price || (v && v.price!=null ? v.price : p.price)), variation:variation, color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
+    cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price || (v && v.price!=null ? v.price : p.price)), variation:variation, variationId:(v?v.id:null), color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
   }
   saveCart();
   renderCartBadge(true);
@@ -764,7 +764,7 @@ function submitPixPayment(){
   if(!currentFreight || currentFreight.cep!==cep){ errEl.textContent = "Calcule o frete para esse CEP antes de gerar o Pix."; return; }
 
   var items = cart.map(function(it){
-    var vid = null;
+    var vid = it.variationId || null;
     if(it.variation){
       var prod = products.find(function(x){ return x.id===it.id; });
       if(prod && prod.variations){
