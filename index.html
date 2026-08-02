@@ -835,7 +835,7 @@ function startPixPolling(){
         document.getElementById("pix-status-msg").textContent = "Pagamento nao aprovado. Tente novamente ou escolha outra forma de pagamento.";
       }
     }).catch(function(){});
-    if(attempts > 200){ stopPixPolling(); }
+    if(attempts > 900){ stopPixPolling(); }
   }, 4000);
 }
 function stopPixPolling(){
