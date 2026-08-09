@@ -810,7 +810,45 @@ function submitPixPayment(){
     errEl.textContent = "Erro de conexao. Tente novamente.";
   });
 }
-function startPixPolling(){
+function finalizarPedidoWhatsapp(){
+    var name = document.getElementById("pix-name").value.trim();
+    var phone = document.getElementById("pix-phone").value.replace(/\D/g,"");
+    var address = document.getElementById("pix-address").value.trim();
+    var cep = document.getElementById("pix-cep").value.replace(/\D/g,"");
+    var couponEl = document.getElementById("pix-coupon");
+    var coupon = couponEl ? couponEl.value.trim() : "";
+                         var errEl = document.getElementById("pix-error");
+    errEl.textContent = "";
+    if(!name){ errEl.textContent = "Informe seu nome completo."; return; }
+    if(!phone || phone.length<10){ errEl.textContent = "Informe um WhatsApp valido, com DDD."; return; }
+    if(!address){ errEl.textContent = "Informe seu endereco."; return; }
+    if(!currentFreight || currentFreight.cep!==cep){ errEl.textContent = "Calcule o frete para esse CEP antes de finalizar."; return; }
+    var lines = cart.map(function(i){
+          return "- "+i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+" - "+brl(i.unitPrice*i.qty);
+    });
+    var subtotal = cartTotal();
+    var freightVal = currentFreight.combinarDireto ? 0 : currentFreight.value;
+    var freightText = currentFreight.combinarDireto ? "A combinar" : brl(freightVal);
+    var total = subtotal + freightVal;
+    var msg = "Ola! Gostaria de finalizar este pedido:\n\n" + lines.join("\n") +
+          "\n\nSubtotal: " + brl(subtotal) +
+          "\nFrete: " + freightText +
+          "\nTotal: " + brl(total) +
+          "\n\nNome: " + name +
+          "\nWhatsApp: " + phone +
+          "\nEndereco: " + address +
+          (currentFreight.cidade ? ("\nCidade/UF: "+currentFreight.cidade+"/"+currentFreight.uf) : "") +
+          "\nCEP: " + cep +
+          (coupon ? ("\nCupom: " + coupon) : "");
+    window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
+    cart = [];
+    saveCart();
+    renderCartItems();
+    renderCartBadge();
+    closePixModal();
+    showToast("Pedido enviado! Aguarde a confirmacao pelo WhatsApp.");
+}
+  function startPixPolling(){
   stopPixPolling();
   var attempts = 0;
   pixPollTimer = setInterval(function(){
@@ -866,15 +904,15 @@ document.body.insertAdjacentHTML("beforeend",
   "<div class=\"pix-modal-body\">" +
   "<div id=\"pix-step-form\">" +
   "<label>Nome completo</label><input id=\"pix-name\" type=\"text\" placeholder=\"Seu nome completo\">" +
-  "<label>Email</label><input id=\"pix-email\" type=\"email\" placeholder=\"seu@email.com\">" +
-  "<label>CPF</label><input id=\"pix-cpf\" type=\"text\" placeholder=\"000.000.000-00\" maxlength=\"14\">" +
   "<label>WhatsApp (com DDD)</label><input id=\"pix-phone\" type=\"tel\" placeholder=\"11999999999\" maxlength=\"11\">" +
   "<label>Endereço (rua, número, bairro)</label><input id=\"pix-address\" type=\"text\" placeholder=\"Sua rua, numero e bairro\">" +
   "<label>CEP</label><input id=\"pix-cep\" type=\"text\" placeholder=\"00000-000\" maxlength=\"9\">" +
   "<button class=\"actionbtn ghost\" type=\"button\" onclick=\"calcularFreteModal()\">Calcular frete</button>" +
   "<div class=\"muted\" id=\"pix-freight-result\" style=\"margin-top:6px;font-size:13px;\"></div>" +
+  "<label>Cupom (opcional)</label><input id=\"pix-coupon\" type=\"text\" placeholder=\"Codigo do cupom\">" +
   "<div style=\"margin-top:10px;font-weight:bold;\" id=\"pix-total-line\">Total: <span id=\"pix-total-value\"></span></div>" +
-  "<button class=\"actionbtn pix\" onclick=\"submitPixPayment()\">Pagar com Pix</button>" +
+  "<!-- Pix desativado a pedido da loja (nao querem pagamento/dados financeiros no catalogo por enquanto). Para reativar: trocar onclick/texto do botao abaixo para submitPixPayment()/'Pagar com Pix', e devolver os campos pix-email e pix-cpf no formulario (submitPixPayment() depende dos dois). -->" +
+  "<button class=\"actionbtn\" onclick=\"finalizarPedidoWhatsapp()\">Finalizar pedido</button>" +
   "<div class=\"pix-error\" id=\"pix-error\"></div>" +
   "</div>" +
   "<div id=\"pix-step-qr\" style=\"display:none;\">" +
