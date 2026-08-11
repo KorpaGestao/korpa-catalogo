@@ -208,7 +208,7 @@ window.addEventListener("hashchange", route);
 /* ---------- HELPERS ---------- */
 
 function visibleProducts(list){
-  return list.filter(function(p){ return p.in_stock || !p.hide_when_out_of_stock; });
+  return list;
 }
 function priceHtmlFor(p, v){
   if(p.promo_price){ return "<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price); }
@@ -276,7 +276,7 @@ function renderHome(categoryFilter){
 
   var featured = visibleProducts(products.filter(function(p){ return p.featured; }));
   var promos = visibleProducts(products.filter(function(p){ return p.promo_price; }));
-  var recent = visibleProducts(products.slice(0,10));
+  var recent = visibleProducts(products);
 
   body = "<div class=\"wrap\">";
   body += renderFilterBar(null, categories);
