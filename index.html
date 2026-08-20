@@ -177,6 +177,74 @@ var galleryIndex = 0;
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function brl(n){ return "R$ " + Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
+
+/* ---------- CATALOG DISPLAY MERGE GROUPS ---------- */
+/* Agrupa visualmente produtos diferentes em um so card/pagina no catalogo,
+   sem alterar nada no Korpa Gestao nem nos produtos reais no banco/estoque. */
+var MERGE_GROUPS = [
+{ key:"corta-vento", displayName:"Casaco Corta Vento", matchNames:["Casaquinho Corta Vento","Casaco Corta Vento"] }
+];
+
+function buildMergedProduct(g, members, gi){
+var images = [];
+members.forEach(function(m){ (m.images||[]).forEach(function(img){ if(img && images.indexOf(img)===-1) images.push(img); }); });
+var colorImages = [];
+members.forEach(function(m){ (m.color_images||[]).forEach(function(ci){ colorImages.push(ci); }); });
+var variations = [];
+members.forEach(function(m){
+(m.variations||[]).forEach(function(v){
+var clone = {};
+for(var k in v){ clone[k]=v[k]; }
+clone._realProductId = m.id;
+variations.push(clone);
+});
+});
+var prices = variations.map(function(v){ return v.price!=null ? Number(v.price) : null; }).filter(function(n){ return n!=null; });
+var priceMin = prices.length ? Math.min.apply(null,prices) : null;
+var priceMax = prices.length ? Math.max.apply(null,prices) : null;
+var anyInStock = members.some(function(m){ return m.in_stock; });
+var descs = members.map(function(m){ return m.description; }).filter(Boolean);
+var specsArr = members.map(function(m){ return m.specs; }).filter(Boolean);
+return {
+id: "merge__"+gi,
+name: g.displayName,
+category: members[0].category,
+brand: members[0].brand,
+images: images,
+color_images: colorImages,
+variations: variations,
+in_stock: anyInStock,
+promo_price: null,
+price: (priceMin!=null ? priceMin : members[0].price),
+price_min: priceMin,
+price_max: priceMax,
+description: descs.length ? descs.join("\n\n") : null,
+specs: specsArr.length ? specsArr.join("\n\n") : null,
+featured: members.some(function(m){ return m.featured; }),
+_merged: true,
+_members: members.map(function(m){ return m.id; })
+};
+}
+
+function buildDisplayProducts(){
+var used = {};
+var result = [];
+MERGE_GROUPS.forEach(function(g, gi){
+var members = products.filter(function(p){ return g.matchNames.indexOf(p.name) > -1; });
+if(members.length === 0) return;
+members.forEach(function(m){ used[m.id] = true; });
+if(members.length === 1){ result.push(members[0]); return; }
+result.push(buildMergedProduct(g, members, gi));
+});
+products.forEach(function(p){ if(!used[p.id]) result.push(p); });
+return result;
+}
+
+function findProductForRoute(id){
+var list = buildDisplayProducts();
+return list.find(function(x){ return x.id===id; }) || null;
+}
+
 async function loadProducts(){
   var res = await sb.from("catalog_products").select("*").order("created_at", {ascending:false});
   if(res.error){
@@ -245,15 +313,16 @@ function renderHome(categoryFilter){
 
   var searchTerm = document.getElementById("search-input") ? document.getElementById("search-input").value.trim().toLowerCase() : "";
 
-  var categories = [];
-  products.forEach(function(p){ if(p.category && categories.indexOf(p.category)===-1) categories.push(p.category); });
+  var displayList = buildDisplayProducts();
+var categories = [];
+  displayList.forEach(function(p){ if(p.category && categories.indexOf(p.category)===-1) categories.push(p.category); });
 
   var hero = "<div class=\"hero\"><h2>Confira nossas peças</h2><p>Novidades toda semana, direto da Korpa para você.</p></div>";
 
   var body = "";
 
   if(searchTerm){
-    var results = visibleProducts(products.filter(function(p){
+    var results = visibleProducts(displayList.filter(function(p){
       return (p.name||"").toLowerCase().indexOf(searchTerm)>-1 || (p.category||"").toLowerCase().indexOf(searchTerm)>-1 || (p.brand||"").toLowerCase().indexOf(searchTerm)>-1;
     }));
     body = "<div class=\"wrap\">" + renderFilterBar(categoryFilter, categories) +
@@ -265,7 +334,7 @@ function renderHome(categoryFilter){
   }
 
   if(categoryFilter){
-    var catResults = visibleProducts(products.filter(function(p){ return p.category===categoryFilter; }));
+    var catResults = visibleProducts(displayList.filter(function(p){ return p.category===categoryFilter; }));
     body = "<div class=\"wrap\">" + renderFilterBar(categoryFilter, categories) +
       "<div class=\"section-title\"><h3>"+esc(categoryFilter)+"</h3></div>" +
       (catResults.length ? ("<div class=\"grid\">"+catResults.map(productCardHtml).join("")+"</div>") : "<div class=\"empty\">Nenhum produto nessa categoria no momento.</div>") +
@@ -274,9 +343,9 @@ function renderHome(categoryFilter){
     return;
   }
 
-  var featured = visibleProducts(products.filter(function(p){ return p.featured; }));
-  var promos = visibleProducts(products.filter(function(p){ return p.promo_price; }));
-  var recent = visibleProducts(products);
+  var featured = visibleProducts(displayList.filter(function(p){ return p.featured; }));
+  var promos = visibleProducts(displayList.filter(function(p){ return p.promo_price; }));
+  var recent = visibleProducts(displayList);
 
   body = "<div class=\"wrap\">";
   body += renderFilterBar(null, categories);
@@ -315,7 +384,7 @@ function onSearchInput(val){
 /* ---------- PRODUCT PAGE ---------- */
 
 function renderProductPage(id){
-  var p = products.find(function(x){ return x.id===id; });
+  var p = findProductForRoute(id);
   var top = "<header class=\"topbar\"><div class=\"topbar-inner\">" +
     "<h1 onclick=\"window.location.hash='#home'\">"+esc(STORE_NAME)+"</h1>" +
     "<button class=\"cart-btn\" onclick=\"toggleCart(true)\">🛒<span class=\"cart-badge\" id=\"cart-badge\">0</span></button>" +
@@ -331,7 +400,7 @@ function renderProductPage(id){
   selectedVariationIdx = null;
   var images = (p.images && p.images.length) ? p.images : [null];
 
-  var related = visibleProducts(products.filter(function(x){ return x.id!==p.id && x.category && x.category===p.category; })).slice(0,6);
+  var related = visibleProducts(buildDisplayProducts().filter(function(x){ var isMember = p._members && p._members.indexOf(x.id)>-1; return x.id!==p.id && !isMember && x.category && x.category===p.category; })).slice(0,6);
 
   document.title = p.name + " - " + STORE_NAME;
 
@@ -366,7 +435,7 @@ function renderProductPage(id){
 }
 
 function setGalleryImage(idx){
-  var p = products.find(function(x){ return "#produto/"+encodeURIComponent(x.id) === window.location.hash; });
+  var p = currentProduct();
   if(!p) return;
   var images = p.images || [];
   if(!images[idx]) return;
@@ -470,12 +539,14 @@ function detailActionsHtml(p, idx){
     html += "<div class=\"qtyrow\"><button onclick=\"stepQty(-1)\">-</button><input id=\"qty-input\" value=\"1\" readonly><button onclick=\"stepQty(1)\">+</button></div>";
     html += "<button class=\"actionbtn\" onclick=\"addToCart('"+esc(p.id)+"')\">Adicionar ao carrinho</button>";
   } else {
-    var nameForAlert = esc(p.name).replace(/'/g,"");
+    var realIdForAlert = p.id;
+var nameForAlert = esc(p.name).replace(/'/g,"");
     if(hasVariations && idx!=null && p.variations[idx]){
       var v = p.variations[idx];
       nameForAlert += " (" + esc(v.size||"") + (v.color ? (" / "+esc(v.color)) : "") + ")";
+if(v._realProductId) realIdForAlert = v._realProductId;
     }
-    html += "<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(p.id)+"','"+nameForAlert+"')\">Avise-me quando chegar</button>";
+    html += "<button class=\"actionbtn avise\" onclick=\"openAviseModal('"+esc(realIdForAlert)+"','"+nameForAlert+"')\">Avise-me quando chegar</button>";
   }
   return html;
 }
@@ -506,11 +577,11 @@ function currentProduct(){
   var hash = window.location.hash || "";
   if(hash.indexOf("#produto/")!==0) return null;
   var id = hash.replace("#produto/","");
-  return products.find(function(x){ return x.id===id; }) || null;
+  return findProductForRoute(id);
 }
 
 function addToCart(productId){
-  var p = products.find(function(x){ return x.id===productId; });
+  var p = findProductForRoute(productId);
   if(!p) return;
   if(!p.in_stock){ showToast("Produto sem estoque no momento."); return; }
   var variation = null;
@@ -523,13 +594,15 @@ function addToCart(productId){
     if(!v || !v.available){ showToast("Essa opção está indisponível."); return; }
     variation = (v.size||"") + (v.color ? (" / "+v.color) : "");
     colorRaw = v.color || null;
+var realProductId = v._realProductId || p.id;
     stockLimit = (typeof v.stock === "number") ? v.stock : null;
   } else if(typeof p.stock === "number"){
     stockLimit = p.stock;
   }
   var qtyEl = document.getElementById("qty-input");
   var qty = qtyEl ? (parseInt(qtyEl.value,10)||1) : 1;
-  var key = p.id + "|" + (variation||"");
+  var idForCart = (typeof realProductId !== "undefined" && realProductId) ? realProductId : p.id;
+var key = idForCart + "|" + (variation||"");
   var existing = cart.find(function(c){ return c.key===key; });
   var already = existing ? existing.qty : 0;
   var msg = "Produto adicionado ao carrinho!";
@@ -538,7 +611,7 @@ function addToCart(productId){
     if((already+qty) > stockLimit){ qty = stockLimit - already; msg = "Quantidade limitada ao estoque disponível ("+stockLimit+")."; }
   }
   if(existing){ existing.qty += qty; } else {
-    cart.push({ key:key, id:p.id, name:p.name, unitPrice:(p.promo_price || (v && v.price!=null ? v.price : p.price)), variation:variation, variationId:(v?v.id:null), color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
+    cart.push({ key:key, id:idForCart, name:p.name, unitPrice:(p.promo_price || (v && v.price!=null ? v.price : p.price)), variation:variation, variationId:(v?v.id:null), color:colorRaw, image:(p.images&&p.images[0])||null, qty:qty });
   }
   saveCart();
   renderCartBadge(true);
