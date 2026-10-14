@@ -851,8 +851,8 @@ function renderHome(categoryFilter){
       return "<div class=\"cat\" onclick=\"window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\"><div class=\"cat-img\">"+(p?"<img src=\""+esc(p.images[0])+"\" alt=\"\" loading=\"lazy\">":esc(c.charAt(0)))+"</div><div class=\"cat-name\">"+esc(c)+"</div></div>";
     }).join("") + "</div></div></section>") : "";
 
-  body = heroHtml(slides) +
-    "<div class=\"perks\"><div class=\"wrap\"><div class=\"perks-row\">" +
+  body = /* banner grande removido a pedido da loja */
+    "<div class=\"perks\" style=\"border-top:1px solid var(--line)\"><div class=\"wrap\"><div class=\"perks-row\">" +
       "<div class=\"perk\">"+ICON.truck+"<div><b>Enviamos pra todo o Brasil</b><span>Frete calculado na hora pelo CEP</span></div></div>" +
       "<div class=\"perk\">"+ICON.pin+"<div><b>Entrega própria</b><span>Fortaleza e região metropolitana</span></div></div>" +
       "<div class=\"perk\">"+ICON.chat+"<div><b>Atendimento no WhatsApp</b><span>Tira dúvidas de tamanho e cor</span></div></div>" +
@@ -866,8 +866,6 @@ function renderHome(categoryFilter){
     "</div></section>";
 
   document.getElementById("app").innerHTML = top + body + renderFooter();
-  enableHeroSwipe();
-  if(slides.length>1) startHeroTimer();
 }
 function normSearch(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 
