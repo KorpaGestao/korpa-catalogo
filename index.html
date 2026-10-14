@@ -1490,7 +1490,7 @@ function freightOptionsHtml(state, radioName){
   }
   return (where ? "<div class=\"ship-note\" style=\"margin-top:0\">Entregas para "+where+" · CEP "+formatCep(state.cep)+"</div>" : "") +
     state.opcoes.map(function(o,i){
-      var days = o.tipo==="local" ? "Entrega própria · combinamos o dia com você" : (o.prazoDias ? ("Chega em até "+o.prazoDias+" dias úteis") : "Correios");
+      var days = o.descricao ? o.descricao : (o.tipo==="local" ? "Entrega própria · combinamos o dia com você" : (o.prazoDias ? ("Chega em até "+o.prazoDias+(Number(o.prazoDias)===1?" dia útil":" dias úteis")) : "Correios"));
       var price = Number(o.preco)>0 ? brl(o.preco) : "Grátis";
       if(radioName){
         return "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\""+radioName+"\" "+(i===state.sel?"checked":"")+" onchange=\"selectFreight("+i+")\"><div><div class=\"sname\">"+esc(o.nome)+"</div><div class=\"sdays\">"+days+"</div></div></div><div class=\"sprice\">"+price+"</div></label>";
@@ -1505,7 +1505,7 @@ function selectedFreight(){
   if(!s.cep || s.loading || s.erro) return null;
   if(!s.opcoes.length) return {value:0, nome:"Frete a combinar", cep:s.cep, cidade:s.cidade, uf:s.uf, combinarDireto:true};
   var o = s.opcoes[s.sel] || s.opcoes[0];
-  return {value:Number(o.preco)||0, nome:o.nome, cep:s.cep, cidade:s.cidade, uf:s.uf, combinarDireto:false};
+  return {value:Number(o.preco)||0, nome:o.nome, tipo:o.tipo, cep:s.cep, cidade:s.cidade, uf:s.uf, combinarDireto:false};
 }
 function selectFreight(i){ cartFreight.sel = i; renderCartTotals(); }
 
@@ -1614,7 +1614,7 @@ function openPixModal(){
     cart.map(function(i){ return "<div class=\"sumrow\"><span>"+i.qty+"x "+esc(i.name)+(i.variation?(" <span class=\"muted\">("+esc(i.variation)+")</span>"):"")+"</span><span>"+brl(i.unitPrice*i.qty)+"</span></div>"; }).join("") +
     "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
     "<div class=\"sumrow total\"><span>Total</span><span id=\"pix-total-value\"></span></div>";
-  document.getElementById("pix-address-wrap").style.display = (f.combinarDireto && !f.cep) ? "none" : "";
+  document.getElementById("pix-address-wrap").style.display = ((f.combinarDireto && !f.cep) || f.tipo==="retirada") ? "none" : "";
   document.getElementById("pix-modal-overlay").classList.add("show");
   document.getElementById("pix-modal").classList.add("open");
   document.getElementById("pix-step-form").style.display = "";
@@ -1647,7 +1647,7 @@ function finalizarPedidoWhatsapp(){
   var coupon = couponEl ? couponEl.value.trim() : "";
   var errEl = document.getElementById("pix-error");
   errEl.textContent = "";
-  var precisaEndereco = !(currentFreight && currentFreight.combinarDireto && !currentFreight.cep);
+  var precisaEndereco = !(currentFreight && ((currentFreight.combinarDireto && !currentFreight.cep) || currentFreight.tipo==="retirada"));
   if(!name){ errEl.textContent = "Informe seu nome completo."; return; }
   if(!phone || phone.length<10){ errEl.textContent = "Informe um WhatsApp válido, com DDD."; return; }
   if(precisaEndereco && !address){ errEl.textContent = "Informe seu endereço (rua, número e bairro)."; return; }
