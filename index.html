@@ -266,7 +266,8 @@ label.ship-opt:has(input:checked){border-color:var(--ink);background:#fff;}
 .cart-empty svg{width:54px;height:54px;color:var(--pink);margin-bottom:10px;}
 .cart-footer{padding:16px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#fff;}
 .cart-footer .ship{margin-top:0;border-top:none;padding-top:0;margin-bottom:14px;}
-.sumrow{display:flex;justify-content:space-between;font-size:14.5px;margin-bottom:6px;}
+.sumrow{display:flex;justify-content:space-between;gap:12px;font-size:14.5px;margin-bottom:6px;}
+.sumrow>span:last-child{white-space:nowrap;}
 .sumrow.total{font-size:18px;font-weight:700;color:var(--ink);margin:10px 0 14px;}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 22px;font-size:14px;opacity:0;transition:all .3s ease;z-index:400;pointer-events:none;max-width:86vw;text-align:center;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -1505,7 +1506,7 @@ function selectedFreight(){
   if(!s.cep || s.loading || s.erro) return null;
   if(!s.opcoes.length) return {value:0, nome:"Frete a combinar", cep:s.cep, cidade:s.cidade, uf:s.uf, combinarDireto:true};
   var o = s.opcoes[s.sel] || s.opcoes[0];
-  return {value:Number(o.preco)||0, nome:o.nome, tipo:o.tipo, cep:s.cep, cidade:s.cidade, uf:s.uf, combinarDireto:false};
+  return {value:Number(o.preco)||0, nome:o.nome, tipo:o.tipo, servicoId:o.servicoId, cep:s.cep, cidade:s.cidade, uf:s.uf, combinarDireto:false};
 }
 function selectFreight(i){ cartFreight.sel = i; renderCartTotals(); }
 
@@ -1609,11 +1610,10 @@ function openPixModal(){
   }
   currentFreight = f;
   currentPedidoId = null;
+  toggleCart(false);
   document.getElementById("pix-cep").value = f.cep || "";
-  document.getElementById("checkout-summary").innerHTML =
-    cart.map(function(i){ return "<div class=\"sumrow\"><span>"+i.qty+"x "+esc(i.name)+(i.variation?(" <span class=\"muted\">("+esc(i.variation)+")</span>"):"")+"</span><span>"+brl(i.unitPrice*i.qty)+"</span></div>"; }).join("") +
-    "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
-    "<div class=\"sumrow total\"><span>Total</span><span id=\"pix-total-value\"></span></div>";
+  payMethod = pixPermitido() ? (payMethod || "pix") : "cartao";
+  renderCheckoutSummary();
   document.getElementById("pix-address-wrap").style.display = ((f.combinarDireto && !f.cep) || f.tipo==="retirada") ? "none" : "";
   document.getElementById("pix-modal-overlay").classList.add("show");
   document.getElementById("pix-modal").classList.add("open");
@@ -1628,7 +1628,7 @@ function openPixModal(){
     var saved = JSON.parse(localStorage.getItem("korpa_cliente")||"{}");
     ["pix-name","pix-phone","pix-address","pix-complement"].forEach(function(id){ var el = document.getElementById(id); if(el && !el.value && saved[id]) el.value = saved[id]; });
   }catch(e){}
-  updatePixTotalDisplay();
+  renderCheckoutSummary();
 }
 function updatePixTotalDisplay(){
   var el = document.getElementById("pix-total-value");
@@ -1638,43 +1638,144 @@ function updatePixTotalDisplay(){
 }
 function backToCart(){ closePixModal(); toggleCart(true); }
 
-function finalizarPedidoWhatsapp(){
-  var name = document.getElementById("pix-name").value.trim();
-  var phone = document.getElementById("pix-phone").value.replace(/\D/g,"");
-  var address = document.getElementById("pix-address").value.trim();
-  var complement = document.getElementById("pix-complement").value.trim();
-  var couponEl = document.getElementById("pix-coupon");
-  var coupon = couponEl ? couponEl.value.trim() : "";
+/* ---------- FORMA DE PAGAMENTO: Pix no site / Cartao (+10%) pelo WhatsApp ---------- */
+var CARD_FEE_PCT = 10;
+var payMethod = "pix";
+function pixPermitido(){ return !!(currentFreight && !currentFreight.combinarDireto && currentFreight.servicoId && currentFreight.cep); }
+function round2(n){ return Math.round(n*100)/100; }
+function checkoutTotals(){
+  var sub = cartTotal();
+  var fr = (currentFreight && !currentFreight.combinarDireto) ? Number(currentFreight.value)||0 : 0;
+  var base = round2(sub + fr);
+  var acresc = payMethod==="cartao" ? round2(base * CARD_FEE_PCT/100) : 0;
+  return { sub: sub, fr: fr, base: base, acresc: acresc, total: round2(base + acresc) };
+}
+function setPayMethod(m){
+  if(m==="pix" && !pixPermitido()){ showToast("Pix no site precisa do frete calculado pelo CEP 💕"); m = "cartao"; }
+  payMethod = m;
+  renderCheckoutSummary();
+}
+function renderCheckoutSummary(){
+  var f = currentFreight; if(!f) return;
+  var t = checkoutTotals();
+  var el = document.getElementById("checkout-summary");
+  if(el) el.innerHTML =
+    cart.map(function(i){ return "<div class=\"sumrow\"><span>"+i.qty+"x "+esc(i.name)+(i.variation?(" <span class=\"muted\">("+esc(i.variation)+")</span>"):"")+"</span><span>"+brl(i.unitPrice*i.qty)+"</span></div>"; }).join("") +
+    "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
+    (t.acresc>0 ? "<div class=\"sumrow\"><span>Acréscimo cartão ("+CARD_FEE_PCT+"%)</span><span>"+brl(t.acresc)+"</span></div>" : "") +
+    "<div class=\"sumrow total\"><span>Total"+(payMethod==="cartao"?" no cartão":" no Pix")+"</span><span id=\"pix-total-value\">"+brl(t.total)+(f.combinarDireto?" + frete":"")+"</span></div>";
+  var pm = document.getElementById("pay-methods");
+  if(pm){
+    var pixOk = pixPermitido();
+    pm.innerHTML =
+      "<label class=\"ship-opt\""+(pixOk?"":" style=\"opacity:.55\"")+"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="pix"?"checked":"")+" "+(pixOk?"":"disabled")+" onchange=\"setPayMethod('pix')\"><div><div class=\"sname\">Pix</div><div class=\"sdays\">"+(pixOk?"Pague agora aqui no site, aprovação na hora":"Disponível com o frete calculado pelo CEP")+"</div></div></div><div class=\"sprice\">"+brl(round2(t.base))+"</div></label>" +
+      "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="cartao"?"checked":"")+" onchange=\"setPayMethod('cartao')\"><div><div class=\"sname\">Cartão de crédito</div><div class=\"sdays\">+"+CARD_FEE_PCT+"% · enviamos o link de pagamento pelo WhatsApp</div></div></div><div class=\"sprice\">"+brl(round2(t.base*(1+CARD_FEE_PCT/100)))+"</div></label>";
+  }
+  var btn = document.getElementById("checkout-submit");
+  if(btn) btn.innerHTML = payMethod==="pix" ? "Gerar Pix e pagar" : (ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Enviar pedido e receber o link");
+  if(btn) btn.className = payMethod==="pix" ? "btn block" : "btn wa block";
+  var sec = document.getElementById("checkout-secure");
+  if(sec) sec.innerHTML = ICON.lock + (payMethod==="pix" ? "Pagamento Pix processado pelo Mercado Pago" : "A loja te envia o link de pagamento do cartão no WhatsApp");
+}
+function lerDadosCliente(){
+  var d = {
+    name: document.getElementById("pix-name").value.trim(),
+    phone: document.getElementById("pix-phone").value.replace(/\D/g,""),
+    address: document.getElementById("pix-address").value.trim(),
+    complement: document.getElementById("pix-complement").value.trim(),
+    coupon: (document.getElementById("pix-coupon")||{value:""}).value.trim()
+  };
   var errEl = document.getElementById("pix-error");
   errEl.textContent = "";
   var precisaEndereco = !(currentFreight && ((currentFreight.combinarDireto && !currentFreight.cep) || currentFreight.tipo==="retirada"));
-  if(!name){ errEl.textContent = "Informe seu nome completo."; return; }
-  if(!phone || phone.length<10){ errEl.textContent = "Informe um WhatsApp válido, com DDD."; return; }
-  if(precisaEndereco && !address){ errEl.textContent = "Informe seu endereço (rua, número e bairro)."; return; }
-  if(!currentFreight){ errEl.textContent = "Calcule o frete antes de finalizar."; return; }
-  try{ localStorage.setItem("korpa_cliente", JSON.stringify({"pix-name":name,"pix-phone":phone,"pix-address":address,"pix-complement":complement})); }catch(e){}
+  if(!d.name){ errEl.textContent = "Informe seu nome completo."; return null; }
+  if(!d.phone || d.phone.length<10){ errEl.textContent = "Informe um WhatsApp válido, com DDD."; return null; }
+  if(precisaEndereco && !d.address){ errEl.textContent = "Informe seu endereço (rua, número e bairro)."; return null; }
+  if(!currentFreight){ errEl.textContent = "Calcule o frete antes de finalizar."; return null; }
+  try{ localStorage.setItem("korpa_cliente", JSON.stringify({"pix-name":d.name,"pix-phone":d.phone,"pix-address":d.address,"pix-complement":d.complement})); }catch(e){}
+  return d;
+}
+function submitCheckout(){
+  if(payMethod==="pix") pagarPix(); else finalizarPedidoWhatsapp();
+}
+var ultimoPedidoPix = null;
+function pagarPix(){
+  if(!pixPermitido()){ setPayMethod("cartao"); return; }
+  var d = lerDadosCliente(); if(!d) return;
+  var errEl = document.getElementById("pix-error");
+  var items = cart.map(function(it){
+    var vid = it.variationId || null;
+    if(!vid && it.variation){
+      var prod = products.find(function(x){ return x.id===it.id; });
+      var match = prod && (prod.variations||[]).find(function(v){ return ((v.size||"") + (v.color?(" / "+v.color):"")) === it.variation; });
+      if(match) vid = match.id;
+    }
+    return { productId: it.id, variationId: vid, qty: it.qty };
+  });
+  var address = d.address + (d.complement ? (" - " + d.complement) : "");
+  var btn = document.getElementById("checkout-submit");
+  btn.disabled = true; btn.textContent = "Gerando Pix...";
+  sb.functions.invoke("criar-pedido", { body: {
+    items: items, customerName: d.name, customerPhone: d.phone, customerAddress: address,
+    cep: currentFreight.cep, freightOption: { servicoId: currentFreight.servicoId }
+  }}).then(async function(res){
+    btn.disabled = false; renderCheckoutSummary();
+    var data = res.data;
+    if(res.error){
+      var msg = "Não foi possível gerar o Pix agora. Tente de novo ou escolha cartão pelo WhatsApp.";
+      try{ if(res.error.context && res.error.context.json){ var b = await res.error.context.json(); if(b && b.error) msg = b.error; } }catch(e){}
+      errEl.textContent = msg; return;
+    }
+    if(!data || data.error || !data.qrCode){ errEl.textContent = (data && data.error) || "Não foi possível gerar o Pix agora."; return; }
+    currentPedidoId = data.pedidoId;
+    ultimoPedidoPix = { id: data.pedidoId, total: data.total, nome: d.name, entrega: currentFreight.nome, itens: cart.map(function(i){ return i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):""); }) };
+    if(data.qrCodeBase64){ document.getElementById("pix-qr-img").src = "data:image/png;base64," + data.qrCodeBase64; document.getElementById("pix-qr-wrap").style.display = ""; }
+    else document.getElementById("pix-qr-wrap").style.display = "none";
+    document.getElementById("pix-copy-text").value = data.qrCode;
+    document.getElementById("pix-qr-total").textContent = "Total: " + brl(data.total);
+    document.getElementById("pix-step-form").style.display = "none";
+    document.getElementById("pix-step-qr").style.display = "";
+    document.getElementById("pix-status-msg").textContent = "Aguardando o pagamento... assim que cair, esta tela confirma sozinha.";
+    startPixPolling();
+  }).catch(function(){
+    btn.disabled = false; renderCheckoutSummary();
+    errEl.textContent = "Erro de conexão. Tente de novo.";
+  });
+}
+function avisarLojaPix(){
+  var p = ultimoPedidoPix; if(!p) return;
+  var msg = "Olá! Acabei de pagar meu pedido pelo Pix no site 💕\n\nPedido #" + String(p.id).slice(0,8) +
+    "\n" + p.itens.map(function(s){ return "• "+s; }).join("\n") +
+    "\nEntrega: " + p.entrega + "\nTotal pago: " + brl(p.total) + "\n\nNome: " + p.nome;
+  window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
+}
+
+function finalizarPedidoWhatsapp(){
+  var d = lerDadosCliente(); if(!d) return;
+  var t = checkoutTotals();
   var lines = cart.map(function(i){ return "• "+i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+" - "+brl(i.unitPrice*i.qty); });
-  var subtotal = cartTotal();
-  var freightVal = currentFreight.combinarDireto ? 0 : currentFreight.value;
-  var freightText = currentFreight.combinarDireto ? "A combinar" : (freightVal>0 ? brl(freightVal) : "Grátis");
+  var freightText = currentFreight.combinarDireto ? "A combinar" : (t.fr>0 ? brl(t.fr) : "Grátis");
+  var cartao = payMethod==="cartao";
   var msg = "Olá! Gostaria de finalizar este pedido pelo site:\n\n" + lines.join("\n") +
-    "\n\nSubtotal: " + brl(subtotal) +
+    "\n\nSubtotal: " + brl(t.sub) +
     "\nEntrega: " + currentFreight.nome + " - " + freightText +
-    "\nTotal: " + brl(subtotal + freightVal) + (currentFreight.combinarDireto ? " + frete" : "") +
-    "\n\nNome: " + name +
-    "\nWhatsApp: " + phone +
-    (address ? ("\nEndereço: " + address) : "") +
-    (complement ? ("\nComplemento: " + complement) : "") +
+    (cartao ? ("\nAcréscimo cartão ("+CARD_FEE_PCT+"%): " + brl(t.acresc)) : "") +
+    "\nTotal" + (cartao ? " no cartão" : "") + ": " + brl(t.total) + (currentFreight.combinarDireto ? " + frete" : "") +
+    "\nPagamento: " + (cartao ? "Cartão de crédito (quero receber o link de pagamento)" : "Pix") +
+    "\n\nNome: " + d.name +
+    "\nWhatsApp: " + d.phone +
+    (d.address ? ("\nEndereço: " + d.address) : "") +
+    (d.complement ? ("\nComplemento: " + d.complement) : "") +
     (currentFreight.cidade ? ("\nCidade/UF: "+currentFreight.cidade+"/"+currentFreight.uf) : "") +
     (currentFreight.cep ? ("\nCEP: " + formatCep(currentFreight.cep)) : "") +
-    (coupon ? ("\nCupom: " + coupon) : "");
+    (d.coupon ? ("\nCupom: " + d.coupon) : "");
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
   cart = [];
   saveCart();
   renderCartItems();
   renderCartBadge();
   closePixModal();
-  showToast("Pedido enviado! Já já a gente te responde no WhatsApp 💕");
+  showToast(cartao ? "Pedido enviado! Já já te mandamos o link do cartão no WhatsApp 💕" : "Pedido enviado! Já já a gente te responde no WhatsApp 💕");
 }
 function contactHelpWhatsapp(){
   var msg = encodeURIComponent("Olá! Tenho uma dúvida sobre como comprar na KORPA.");
@@ -1708,6 +1809,8 @@ document.body.insertAdjacentHTML("beforeend",
       "<div id=\"pix-step-form\">" +
         "<div class=\"order-sum\" id=\"checkout-summary\"></div>" +
         "<button class=\"linkbtn\" style=\"font-size:13px;margin:-4px 0 14px\" onclick=\"backToCart()\">Alterar sacola ou frete</button>" +
+        "<div class=\"optlabel\" style=\"margin-top:0\">Forma de pagamento</div>" +
+        "<div id=\"pay-methods\" style=\"margin-bottom:16px\"></div>" +
         "<div class=\"field\"><label>Nome completo</label><input id=\"pix-name\" type=\"text\" autocomplete=\"name\" placeholder=\"Seu nome completo\"></div>" +
         "<div class=\"field\"><label>WhatsApp (com DDD)</label><input id=\"pix-phone\" type=\"tel\" autocomplete=\"tel\" inputmode=\"numeric\" placeholder=\"85999999999\" maxlength=\"15\"></div>" +
         "<div id=\"pix-address-wrap\">" +
@@ -1716,13 +1819,13 @@ document.body.insertAdjacentHTML("beforeend",
         "</div>" +
         "<div class=\"field\"><label>Cupom (opcional)</label><input id=\"pix-coupon\" type=\"text\" placeholder=\"Código do cupom\"></div>" +
         "<input id=\"pix-cep\" type=\"hidden\">" +
-        "<!-- Pix desativado a pedido da loja. Para reativar: trocar o onclick do botao abaixo para submitPixPayment() e devolver os campos pix-email e pix-cpf. -->" +
-        "<button class=\"btn wa block\" onclick=\"finalizarPedidoWhatsapp()\">"+ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Enviar pedido pelo WhatsApp</button>" +
-        "<div class=\"secure\">"+ICON.lock+"Você confirma o pagamento direto com a loja</div>" +
+        "<button class=\"btn block\" id=\"checkout-submit\" onclick=\"submitCheckout()\">Gerar Pix e pagar</button>" +
+        "<div class=\"secure\" id=\"checkout-secure\"></div>" +
         "<div class=\"pix-error\" id=\"pix-error\"></div>" +
       "</div>" +
       "<div id=\"pix-step-qr\" style=\"display:none;\">" +
-        "<p class=\"muted\" style=\"text-align:center;\">Escaneie o QR code no app do seu banco ou copie o código:</p>" +
+        "<div id=\"pix-qr-total\" style=\"text-align:center;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:6px\"></div>" +
+        "<p class=\"muted\" style=\"text-align:center;\">Escaneie o QR code no app do seu banco ou use o Pix Copia e Cola:</p>" +
         "<div class=\"pix-qr-wrap\" id=\"pix-qr-wrap\"><img id=\"pix-qr-img\" src=\"\" alt=\"QR Code Pix\"></div>" +
         "<textarea id=\"pix-copy-text\" readonly></textarea>" +
         "<button class=\"btn block\" id=\"pix-copy-btn\" onclick=\"copyPixCode()\">Copiar código</button>" +
@@ -1731,7 +1834,8 @@ document.body.insertAdjacentHTML("beforeend",
           "<div style=\"font-size:42px;color:var(--ok);line-height:1;\">&#10003;</div>" +
           "<div style=\"font-size:17px;font-weight:bold;color:var(--ok);margin-top:6px;\">Pagamento confirmado!</div>" +
           "<div class=\"muted\" style=\"font-size:13px;margin-top:4px;\">Seu pedido foi recebido e já está sendo preparado. Obrigada pela compra!</div>" +
-          "<button class=\"btn\" style=\"margin-top:14px;\" onclick=\"closePixModal()\">Fechar</button>" +
+          "<button class=\"btn wa block\" style=\"margin-top:14px;\" onclick=\"avisarLojaPix()\">"+ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Avisar a loja no WhatsApp</button>" +
+          "<button class=\"linkbtn\" style=\"margin-top:12px;\" onclick=\"closePixModal()\">Fechar</button>" +
         "</div>" +
       "</div>" +
     "</div>" +
