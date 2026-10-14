@@ -934,7 +934,7 @@ function renderProductPage(id){
         "<div class=\"acc-wrap\">" +
           (p.description ? "<details class=\"acc\" open><summary>Descrição</summary><div class=\"acc-body\">"+esc(p.description).replace(/\n/g,"<br>")+"</div></details>" : "") +
           (p.specs ? "<details class=\"acc\"><summary>Especificações</summary><div class=\"acc-body\">"+esc(p.specs).replace(/\n/g,"<br>")+"</div></details>" : "") +
-          "<details class=\"acc\"><summary>Entrega e trocas</summary><div class=\"acc-body\">Entrega própria em Fortaleza e região metropolitana. Para o resto do Brasil, enviamos pelos Correios com o frete calculado pelo CEP. Qualquer dúvida sobre troca, fala com a gente no WhatsApp 💕</div></details>" +
+          "<details class=\"acc\"><summary>Entrega e trocas</summary><div class=\"acc-body\">Entrega própria em Fortaleza e região metropolitana. Pelos Correios, enviamos pra todo o Brasil com o frete calculado pelo CEP; a postagem é feita em até 1 dia útil após a confirmação do pagamento, e o prazo dos Correios conta a partir da postagem. Qualquer dúvida sobre troca, fala com a gente no WhatsApp 💕</div></details>" +
         "</div>" +
       "</div>" +
     "</div>" +
@@ -1494,7 +1494,9 @@ function freightOptionsHtml(state, radioName){
         return "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\""+radioName+"\" "+(i===state.sel?"checked":"")+" onchange=\"selectFreight("+i+")\"><div><div class=\"sname\">"+esc(o.nome)+"</div><div class=\"sdays\">"+days+"</div></div></div><div class=\"sprice\">"+price+"</div></label>";
       }
       return "<div class=\"ship-opt\"><div><div class=\"sname\">"+esc(o.nome)+"</div><div class=\"sdays\">"+days+"</div></div><div class=\"sprice\">"+price+"</div></div>";
-    }).join("") + "<div class=\"ship-note\">O prazo de entrega não considera feriados.</div>";
+    }).join("") + (state.opcoes.some(function(o){ return o.tipo==="superfrete"; })
+      ? "<div class=\"ship-note\"><b>Correios:</b> a postagem é feita em até 1 dia útil após a confirmação do pagamento. O prazo acima conta a partir da postagem e não considera feriados.</div>"
+      : "<div class=\"ship-note\">O prazo de entrega não considera feriados.</div>");
 }
 
 function selectedFreight(){
