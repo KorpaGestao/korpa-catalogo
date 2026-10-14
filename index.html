@@ -464,7 +464,7 @@ return list.find(function(x){ return x.id===id; }) || null;
 async function loadProducts(){
   var res = await sb.from("catalog_products").select("*").order("created_at", {ascending:false});
   if(res.error){
-    document.getElementById("app").innerHTML = "<div class=\"wrap\"><p>Não foi possível carregar o catálogo agora. Tente novamente em instantes.</p></div>";
+    document.getElementById("app").innerHTML = "<div class=\"wrap\"><p>Não foi possível carregar a loja agora. Tente novamente em instantes.</p></div>";
     console.error(res.error);
     return;
   }
@@ -863,7 +863,7 @@ function renderHome(categoryFilter){
     (promos.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Promoções</h2></div>"+railHtml("rail-promo", promos)+"</div></section>" : "") +
     (!featured.length && newest.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Lançamentos</h2><button class=\"linkbtn\" onclick=\"scrollToAll()\">Ver todos</button></div>"+railHtml("rail-new", newest)+"</div></section>" : "") +
     "<section class=\"section\" id=\"todos\"><div class=\"wrap\"><div class=\"section-head\"><h2>Todos os produtos</h2></div>" +
-      toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto publicado no catálogo ainda.") +
+      toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto disponível no momento.") +
     "</div></section>";
 
   document.getElementById("app").innerHTML = top + body + renderFooter();
@@ -891,7 +891,7 @@ function renderProductPage(id){
   var p = findProductForRoute(id);
   var top = headerHtml("cat");
   if(!p){
-    document.getElementById("app").innerHTML = top + "<div class=\"wrap\"><div class=\"empty\">Produto não encontrado ou não está mais disponível.<br><br><button class=\"btn\" onclick=\"goHome()\">Ver o catálogo</button></div></div>" + renderFooter();
+    document.getElementById("app").innerHTML = top + "<div class=\"wrap\"><div class=\"empty\">Produto não encontrado ou não está mais disponível.<br><br><button class=\"btn\" onclick=\"goHome()\">Ver produtos</button></div></div>" + renderFooter();
     return;
   }
   galleryIndex = 0;
