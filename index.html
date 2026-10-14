@@ -269,6 +269,12 @@ label.ship-opt:has(input:checked){border-color:var(--ink);background:#fff;}
 .sumrow{display:flex;justify-content:space-between;gap:12px;font-size:14.5px;margin-bottom:6px;}
 .sumrow>span:last-child{white-space:nowrap;}
 .sumrow.total{font-size:18px;font-weight:700;color:var(--ink);margin:10px 0 14px;}
+/* sacola: rola inteira (itens + frete + total), cabecalho fixo */
+.cart-drawer{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.cart-drawer .drawer-head{position:sticky;top:0;background:#fff;z-index:2;}
+.cart-drawer .cart-items{flex:0 0 auto;overflow:visible;}
+.cart-drawer .cart-footer{flex:0 0 auto;margin-top:auto;}
+.pix-modal,.avise-modal{max-height:90vh;max-height:90dvh;}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 22px;font-size:14px;opacity:0;transition:all .3s ease;z-index:400;pointer-events:none;max-width:86vw;text-align:center;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 @media(max-width:760px){.toast{bottom:auto;top:70px;transform:translateX(-50%) translateY(-20px);}}
