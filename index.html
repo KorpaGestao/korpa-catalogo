@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>KORPA Feminino · Moda Fitness</title>
+<title>KORPA · Moda Fitness Feminina</title>
 <meta name="description" content="Moda fitness feminina KORPA. Entrega própria em Fortaleza e região e envio para todo o Brasil.">
-<meta property="og:title" content="KORPA Feminino · Moda Fitness">
+<meta property="og:title" content="KORPA · Moda Fitness Feminina">
 <meta property="og:description" content="Moda fitness feminina KORPA. Entrega própria em Fortaleza e região e envio para todo o Brasil.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#E8919F">
@@ -374,6 +374,26 @@ label.ship-opt:has(input:checked){border-color:var(--ink);background:#fff;}
   .wa-float{bottom:16px;right:16px;width:52px;height:52px;}
   .field-row{grid-template-columns:1fr;gap:0;}
 }
+
+/* "Todos os produtos" fora do inicio; aparece so ao clicar em "Ver todos" */
+#todos{display:none;}
+html.ver-todos #todos{display:block;}
+.perks.perks-bottom{margin-top:40px;}
+.logo-sub{letter-spacing:.24em;padding-left:.24em;white-space:nowrap;}
+/* cards no celular: foto grande arredondada, nome e preco em destaque */
+@media(max-width:760px){
+  .grid,.rail{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(2,1fr);gap:30px 12px;overflow:visible;scroll-snap-type:none;}
+  .pcard .imgwrap{border-radius:16px;aspect-ratio:3/4.3;margin-bottom:14px;background:#EFEFEF;}
+  .pcard .badge{top:10px;left:10px;border-radius:8px;font-weight:700;font-size:13px;padding:5px 10px;letter-spacing:0;box-shadow:0 2px 6px rgba(0,0,0,.08);}
+  .pcard .badge.promo{background:var(--pink-dark);}
+  .pcard .swatches{display:none;}
+  .pcard .btn.sm{display:none;}
+  .pcard .pname{font-size:16px;font-weight:500;color:#3d3d3d;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:12px;}
+  .pcard .pprice{font-size:22px;font-weight:800;color:var(--ink);line-height:1.15;letter-spacing:-.01em;}
+  .pcard .pprice .old{display:block;font-size:13px;margin:0 0 2px;color:var(--muted);text-decoration-color:var(--danger);}
+  .pcard .pprice .from{display:block;font-size:12.5px;font-weight:400;letter-spacing:0;margin-bottom:1px;}
+  .pcard .stockwarn{font-size:12.5px;margin-top:6px;}
+}
 </style>
 </head>
 <body>
@@ -527,9 +547,10 @@ var heroIndex = 0;
 var heroTimer = null;
 
 function logoHtml(){
-  return "<div class=\"logo\" onclick=\"goHome()\"><span class=\"logo-word\">KORPA</span><span class=\"logo-sub\">Feminino</span></div>";
+  return "<div class=\"logo\" onclick=\"goHome()\"><span class=\"logo-word\">KORPA</span><span class=\"logo-sub\">Moda Fitness Feminina</span></div>";
 }
 function goHome(){
+  document.documentElement.classList.remove("ver-todos");
   var si = document.getElementById("search-input");
   if(si) si.value = "";
   searchOpen = false;
@@ -612,6 +633,7 @@ function closeSearch(){
   if(had) renderHome(null);
 }
 function scrollToAll(){
+  document.documentElement.classList.add("ver-todos");
   if((window.location.hash||"#home") !== "#home"){ window.location.hash = "#home"; setTimeout(scrollToAll, 80); return; }
   var el = document.getElementById("todos");
   if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 130, behavior:"smooth"});
@@ -625,7 +647,7 @@ function renderFooter(){
       "<a href=\"https://instagram.com/"+INSTAGRAM_USER+"\" target=\"_blank\" rel=\"noopener\">Instagram @"+INSTAGRAM_USER+"</a></div>" +
     "<div><h4>Entrega</h4><p>Entrega própria em Fortaleza e região metropolitana</p><p>Enviamos para todo o Brasil</p></div>" +
     "<div><h4>Categorias</h4>" + allCategories().slice(0,6).map(function(c){ return "<a onclick=\"window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\">"+esc(c)+"</a>"; }).join("") + "</div>" +
-  "</div></div><div class=\"footer-bottom\">© "+new Date().getFullYear()+" KORPA Feminino · Todos os direitos reservados</div></footer>";
+  "</div></div><div class=\"footer-bottom\">© "+new Date().getFullYear()+" KORPA Moda Fitness Feminina · Todos os direitos reservados</div></footer>";
 }
 
 /* ---------- HELPERS DE PRODUTO ---------- */
@@ -822,7 +844,7 @@ function renderHome(categoryFilter){
   var displayList = buildDisplayProducts();
   var top = headerHtml(categoryFilter ? "cat" : "home");
   var body = "";
-  document.title = "KORPA Feminino · Moda Fitness";
+  document.title = "KORPA · Moda Fitness Feminina";
 
   if(searchTerm){
     var results = sortList(displayList.filter(function(p){
@@ -838,7 +860,7 @@ function renderHome(categoryFilter){
 
   if(categoryFilter){
     var catResults = sortList(displayList.filter(function(p){ return p.category===categoryFilter; }));
-    document.title = categoryFilter + " · KORPA Feminino";
+    document.title = categoryFilter + " · KORPA Moda Fitness Feminina";
     body = "<div class=\"wrap\"><div class=\"crumbs\"><a onclick=\"goHome()\">Início</a> &gt; <a onclick=\"scrollToAll()\">Produtos</a> &gt; "+esc(categoryFilter)+"</div>" +
       "<section class=\"section\" style=\"padding-top:12px\"><div class=\"section-head\"><h2>"+esc(categoryFilter)+"</h2><span class=\"muted\">"+catResults.length+" "+(catResults.length===1?"peça":"peças")+"</span></div>" +
       toolbarHtml(categoryFilter) + gridOrEmpty(catResults, "Nenhuma peça nessa categoria no momento.") + "</section></div>";
@@ -847,7 +869,10 @@ function renderHome(categoryFilter){
   }
 
   var slides = heroSlides(displayList);
-  var featured = displayList.filter(function(p){ return p.featured && p.in_stock; });
+  /* Destaques = mais vendidos (units_sold vem do sistema); se ainda nao houver vendas, usa os marcados como destaque */
+  var featured = displayList.filter(function(p){ return p.in_stock && Number(p.units_sold) > 0; })
+    .sort(function(a,b){ return Number(b.units_sold) - Number(a.units_sold); }).slice(0, 6);
+  if(!featured.length) featured = displayList.filter(function(p){ return p.featured && p.in_stock; });
   var promos = displayList.filter(function(p){ return p.promo_price && p.in_stock; });
   var newest = displayList.filter(function(p){ return p.in_stock; }).slice(0,12);
 
@@ -859,15 +884,15 @@ function renderHome(categoryFilter){
     }).join("") + "</div></div></section>") : "";
 
   body = /* banner grande removido a pedido da loja */
-    "<div class=\"perks\" style=\"border-top:1px solid var(--line)\"><div class=\"wrap\"><div class=\"perks-row\">" +
-      "<div class=\"perk\">"+ICON.truck+"<div><b>Enviamos pra todo o Brasil</b><span>Frete calculado na hora pelo CEP</span></div></div>" +
-      "<div class=\"perk\">"+ICON.pin+"<div><b>Entrega própria</b><span>Fortaleza e região metropolitana</span></div></div>" +
-      "<div class=\"perk\">"+ICON.chat+"<div><b>Atendimento no WhatsApp</b><span>Tira dúvidas de tamanho e cor</span></div></div>" +
-    "</div></div></div>" +
     catsHtml +
     (featured.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Destaques</h2></div>"+railHtml("rail-featured", featured)+"</div></section>" : "") +
     (promos.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Promoções</h2></div>"+railHtml("rail-promo", promos)+"</div></section>" : "") +
     (!featured.length && newest.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Lançamentos</h2><button class=\"linkbtn\" onclick=\"scrollToAll()\">Ver todos</button></div>"+railHtml("rail-new", newest)+"</div></section>" : "") +
+    "<div class=\"perks perks-bottom\" style=\"border-top:1px solid var(--line)\"><div class=\"wrap\"><div class=\"perks-row\">" +
+      "<div class=\"perk\">"+ICON.truck+"<div><b>Enviamos pra todo o Brasil</b><span>Frete calculado na hora pelo CEP</span></div></div>" +
+      "<div class=\"perk\">"+ICON.pin+"<div><b>Entrega própria</b><span>Fortaleza e região metropolitana</span></div></div>" +
+      "<div class=\"perk\">"+ICON.chat+"<div><b>Atendimento no WhatsApp</b><span>Tira dúvidas de tamanho e cor</span></div></div>" +
+    "</div></div></div>" +
     "<section class=\"section\" id=\"todos\"><div class=\"wrap\"><div class=\"section-head\"><h2>Todos os produtos</h2></div>" +
       toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto disponível no momento.") +
     "</div></section>";
@@ -908,7 +933,7 @@ function renderProductPage(id){
   if(related.length<4){
     buildDisplayProducts().forEach(function(x){ if(related.length<8 && x.id!==p.id && x.in_stock && related.indexOf(x)===-1 && x.category!==p.category) related.push(x); });
   }
-  document.title = p.name + " · KORPA Feminino";
+  document.title = p.name + " · KORPA Moda Fitness Feminina";
   var safeName = esc(p.name).replace(/'/g,"");
   var savedCep = loadSavedCep();
 
