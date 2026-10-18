@@ -394,6 +394,31 @@ html.ver-todos #todos{display:block;}
   .pcard .pprice .from{display:block;font-size:12.5px;font-weight:400;letter-spacing:0;margin-bottom:1px;}
   .pcard .stockwarn{font-size:12.5px;margin-top:6px;}
 }
+
+/* ---------- POPUP CUPOM DE BOAS-VINDAS ---------- */
+.lead-ov{position:fixed;inset:0;background:rgba(17,17,17,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .25s;}
+.lead-ov.show{opacity:1;pointer-events:auto;}
+.lead-pop{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);width:min(420px,calc(100vw - 32px));background:#fff;z-index:301;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.18);}
+.lead-pop.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
+.lead-pop .lp-top{background:var(--pink-soft);padding:30px 26px 22px;text-align:center;position:relative;border-bottom:1px solid var(--pink-line);}
+.lead-pop .lp-x{position:absolute;top:8px;right:10px;background:none;border:none;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:6px;}
+.lead-pop .lp-kicker{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--pink-dark);margin-bottom:8px;}
+.lead-pop .lp-big{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:54px;line-height:1;color:var(--pink);}
+.lead-pop .lp-big small{font-size:22px;vertical-align:top;margin-left:2px;}
+.lead-pop .lp-sub{font-size:15px;color:var(--text);margin-top:8px;}
+.lead-pop .lp-body{padding:22px 26px 24px;}
+.lead-pop .lp-body .field{margin-bottom:12px;}
+.lead-pop .lp-err{color:#c0392b;font-size:13px;min-height:18px;margin-top:6px;}
+.lead-pop .lp-fine{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.4;}
+.lead-pop .lp-code{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px dashed var(--pink);padding:12px 14px;margin:6px 0 14px;background:#fff;}
+.lead-pop .lp-code b{font-size:22px;letter-spacing:.12em;color:var(--ink);}
+.lead-pop .lp-code button{background:none;border:none;color:var(--pink-dark);font-weight:700;cursor:pointer;font-size:14px;font-family:inherit;}
+.coupon-row{display:flex;gap:8px;}
+.coupon-row input{flex:1;min-width:0;}
+.coupon-row .btn{padding:0 18px;font-size:14px;}
+.coupon-msg{font-size:12.5px;margin-top:6px;min-height:16px;}
+.coupon-msg.ok{color:#2e7d4f;}
+.coupon-msg.bad{color:#c0392b;}
 </style>
 </head>
 <body>
@@ -514,6 +539,7 @@ function route(isRefresh){
   }
   renderCartBadge();
   if(!isRefresh) window.scrollTo(0,0);
+  try{ registrarVisita(); }catch(e){}
 }
 window.addEventListener("hashchange", function(){ route(false); });
 
@@ -1667,6 +1693,11 @@ function openPixModal(){
     var saved = JSON.parse(localStorage.getItem("korpa_cliente")||"{}");
     ["pix-name","pix-phone","pix-address","pix-complement"].forEach(function(id){ var el = document.getElementById(id); if(el && !el.value && saved[id]) el.value = saved[id]; });
   }catch(e){}
+  try{
+    var cupomSalvo = localStorage.getItem("korpa_cupom_popup") || "";
+    var ce = document.getElementById("pix-coupon");
+    if(ce && !ce.value && cupomSalvo){ ce.value = cupomSalvo; if(!cupomAplicado) aplicarCupom(true); }
+  }catch(e){}
   renderCheckoutSummary();
 }
 function updatePixTotalDisplay(){
@@ -1685,9 +1716,11 @@ function round2(n){ return Math.round(n*100)/100; }
 function checkoutTotals(){
   var sub = cartTotal();
   var fr = (currentFreight && !currentFreight.combinarDireto) ? Number(currentFreight.value)||0 : 0;
-  var base = round2(sub + fr);
+  var descPix = cupomAplicado ? round2(sub * cupomAplicado.pct/100) : 0;
+  var desc = payMethod==="pix" ? descPix : 0;
+  var base = round2(sub - desc + fr);
   var acresc = payMethod==="cartao" ? round2(base * CARD_FEE_PCT/100) : 0;
-  return { sub: sub, fr: fr, base: base, acresc: acresc, total: round2(base + acresc) };
+  return { sub: sub, fr: fr, desc: desc, base: base, pixBase: round2(sub - descPix + fr), cardBase: round2(sub + fr), acresc: acresc, total: round2(base + acresc) };
 }
 function setPayMethod(m){
   if(m==="pix" && !pixPermitido()){ showToast("Pix no site precisa do frete calculado pelo CEP 💕"); m = "cartao"; }
@@ -1701,14 +1734,16 @@ function renderCheckoutSummary(){
   if(el) el.innerHTML =
     cart.map(function(i){ return "<div class=\"sumrow\"><span>"+i.qty+"x "+esc(i.name)+(i.variation?(" <span class=\"muted\">("+esc(i.variation)+")</span>"):"")+"</span><span>"+brl(i.unitPrice*i.qty)+"</span></div>"; }).join("") +
     "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
+    (t.desc>0 ? "<div class=\"sumrow\" style=\"color:#2e7d4f\"><span>Cupom "+esc(cupomAplicado.codigo)+" (-"+cupomAplicado.pct+"%)</span><span>- "+brl(t.desc)+"</span></div>" : "") +
+    (cupomAplicado && payMethod==="cartao" ? "<div class=\"sumrow muted\" style=\"font-size:12.5px\"><span>O cupom "+esc(cupomAplicado.codigo)+" vale para pagamento no Pix</span><span></span></div>" : "") +
     (t.acresc>0 ? "<div class=\"sumrow\"><span>Acréscimo cartão ("+CARD_FEE_PCT+"%)</span><span>"+brl(t.acresc)+"</span></div>" : "") +
     "<div class=\"sumrow total\"><span>Total"+(payMethod==="cartao"?" no cartão":" no Pix")+"</span><span id=\"pix-total-value\">"+brl(t.total)+(f.combinarDireto?" + frete":"")+"</span></div>";
   var pm = document.getElementById("pay-methods");
   if(pm){
     var pixOk = pixPermitido();
     pm.innerHTML =
-      "<label class=\"ship-opt\""+(pixOk?"":" style=\"opacity:.55\"")+"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="pix"?"checked":"")+" "+(pixOk?"":"disabled")+" onchange=\"setPayMethod('pix')\"><div><div class=\"sname\">Pix</div><div class=\"sdays\">"+(pixOk?"Pague agora aqui no site, aprovação na hora":"Disponível com o frete calculado pelo CEP")+"</div></div></div><div class=\"sprice\">"+brl(round2(t.base))+"</div></label>" +
-      "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="cartao"?"checked":"")+" onchange=\"setPayMethod('cartao')\"><div><div class=\"sname\">Cartão de crédito</div><div class=\"sdays\">+"+CARD_FEE_PCT+"% · enviamos o link de pagamento pelo WhatsApp</div></div></div><div class=\"sprice\">"+brl(round2(t.base*(1+CARD_FEE_PCT/100)))+"</div></label>";
+      "<label class=\"ship-opt\""+(pixOk?"":" style=\"opacity:.55\"")+"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="pix"?"checked":"")+" "+(pixOk?"":"disabled")+" onchange=\"setPayMethod('pix')\"><div><div class=\"sname\">Pix</div><div class=\"sdays\">"+(pixOk?"Pague agora aqui no site, aprovação na hora":"Disponível com o frete calculado pelo CEP")+"</div></div></div><div class=\"sprice\">"+brl(t.pixBase)+"</div></label>" +
+      "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="cartao"?"checked":"")+" onchange=\"setPayMethod('cartao')\"><div><div class=\"sname\">Cartão de crédito</div><div class=\"sdays\">+"+CARD_FEE_PCT+"% · enviamos o link de pagamento pelo WhatsApp</div></div></div><div class=\"sprice\">"+brl(round2(t.cardBase*(1+CARD_FEE_PCT/100)))+"</div></label>";
   }
   var btn = document.getElementById("checkout-submit");
   if(btn) btn.innerHTML = payMethod==="pix" ? "Gerar Pix e pagar" : (ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Enviar pedido e receber o link");
@@ -1756,7 +1791,8 @@ function pagarPix(){
   btn.disabled = true; btn.textContent = "Gerando Pix...";
   sb.functions.invoke("criar-pedido", { body: {
     items: items, customerName: d.name, customerPhone: d.phone, customerAddress: address,
-    cep: currentFreight.cep, freightOption: { servicoId: currentFreight.servicoId }
+    cep: currentFreight.cep, freightOption: { servicoId: currentFreight.servicoId },
+    cupom: cupomAplicado ? cupomAplicado.codigo : (d.coupon || "")
   }}).then(async function(res){
     btn.disabled = false; renderCheckoutSummary();
     var data = res.data;
@@ -1771,7 +1807,8 @@ function pagarPix(){
     if(data.qrCodeBase64){ document.getElementById("pix-qr-img").src = "data:image/png;base64," + data.qrCodeBase64; document.getElementById("pix-qr-wrap").style.display = ""; }
     else document.getElementById("pix-qr-wrap").style.display = "none";
     document.getElementById("pix-copy-text").value = data.qrCode;
-    document.getElementById("pix-qr-total").textContent = "Total: " + brl(data.total);
+    document.getElementById("pix-qr-total").textContent = "Total: " + brl(data.total) + (data.desconto>0 ? (" (cupom -" + brl(data.desconto) + ")") : "");
+    if(data.cupomAviso) showToast(data.cupomAviso);
     document.getElementById("pix-step-form").style.display = "none";
     document.getElementById("pix-step-qr").style.display = "";
     document.getElementById("pix-status-msg").textContent = "Aguardando o pagamento... assim que cair, esta tela confirma sozinha.";
@@ -1885,7 +1922,7 @@ document.body.insertAdjacentHTML("beforeend",
           "<div class=\"field\"><label>Endereço (rua, número e bairro)</label><input id=\"pix-address\" type=\"text\" autocomplete=\"street-address\" placeholder=\"Rua, número e bairro\"></div>" +
           "<div class=\"field\"><label>Complemento (opcional)</label><input id=\"pix-complement\" type=\"text\" placeholder=\"Apto, bloco, referência\"></div>" +
         "</div>" +
-        "<div class=\"field\"><label>Cupom (opcional)</label><input id=\"pix-coupon\" type=\"text\" placeholder=\"Código do cupom\"></div>" +
+        "<div class=\"field\"><label>Cupom (opcional)</label><div class=\"coupon-row\"><input id=\"pix-coupon\" type=\"text\" placeholder=\"Código do cupom\" autocapitalize=\"characters\" oninput=\"cupomEditado()\" onkeydown=\"if(event.key==='Enter')aplicarCupom()\"><button type=\"button\" class=\"btn ghost\" onclick=\"aplicarCupom()\">Aplicar</button></div><div class=\"coupon-msg\" id=\"coupon-msg\"></div></div>" +
         "<input id=\"pix-cep\" type=\"hidden\">" +
         "<button class=\"btn block\" id=\"checkout-submit\" onclick=\"submitCheckout()\">Gerar Pix e pagar</button>" +
         "<div class=\"secure\" id=\"checkout-secure\"></div>" +
@@ -1938,6 +1975,172 @@ function isUserBusy(){
   if((window.location.hash||"").indexOf("#produto/")===0 && (selSize!=null || selColor!=null)) return true;
   return false;
 }
+
+/* ================= CUPOM NO CHECKOUT (vale no Pix) ================= */
+var cupomAplicado = null; // {codigo, pct}
+function cupomEditado(){
+  var el = document.getElementById("pix-coupon");
+  if(cupomAplicado && el && el.value.trim().toUpperCase() !== cupomAplicado.codigo){
+    cupomAplicado = null; setCupomMsg("", ""); renderCheckoutSummary();
+  }
+}
+function setCupomMsg(txt, cls){ var m = document.getElementById("coupon-msg"); if(m){ m.textContent = txt; m.className = "coupon-msg" + (cls ? " " + cls : ""); } }
+function aplicarCupom(silencioso){
+  var el = document.getElementById("pix-coupon");
+  var codigo = el ? el.value.trim().toUpperCase() : "";
+  if(!codigo){ cupomAplicado = null; setCupomMsg("", ""); renderCheckoutSummary(); return; }
+  var tel = (document.getElementById("pix-phone").value || "").replace(/\D/g, "");
+  if(tel.length < 10){ if(!silencioso) setCupomMsg("Preencha seu WhatsApp acima pra aplicar o cupom 💕", "bad"); return; }
+  setCupomMsg("Conferindo cupom...", "");
+  sb.functions.invoke("validar-cupom", { body: { codigo: codigo, telefone: tel } }).then(function(res){
+    var d = res && res.data;
+    if(d && d.valid){
+      cupomAplicado = { codigo: codigo, pct: Number(d.descontoPct) || 0 };
+      setCupomMsg("Cupom aplicado! " + cupomAplicado.pct + "% de desconto nas peças no pagamento via Pix 💕", "ok");
+    } else {
+      cupomAplicado = null;
+      setCupomMsg((d && d.message) || "Não foi possível validar o cupom agora.", "bad");
+    }
+    renderCheckoutSummary();
+  }).catch(function(){ setCupomMsg("Não foi possível validar o cupom agora.", "bad"); });
+}
+document.addEventListener("change", function(e){ if(e.target && e.target.id === "pix-phone"){ var ce = document.getElementById("pix-coupon"); if(ce && ce.value.trim() && !cupomAplicado) aplicarCupom(true); } });
+
+/* ================= CONTADOR DE VISITAS (aparece no sistema Korpa) ================= */
+function _uidCurto(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function _getId(storage, key){
+  try{ var v = storage.getItem(key); if(!v){ v = _uidCurto(); storage.setItem(key, v); } return v; }catch(e){ return null; }
+}
+function origemVisita(){
+  try{
+    var params = new URLSearchParams(window.location.search);
+    var utm = (params.get("utm_source") || "").toLowerCase();
+    if(params.get("fbclid") || utm.indexOf("ig")===0 || utm.indexOf("insta")>-1) return "instagram";
+    if(utm.indexOf("face")>-1 || utm==="fb") return "facebook";
+    if(utm.indexOf("whats")>-1 || utm==="wa") return "whatsapp";
+    if(params.get("gclid") || utm.indexOf("google")>-1) return "google";
+    if(utm) return utm.slice(0,40);
+    var ref = (document.referrer || "").toLowerCase();
+    if(!ref) return "direto";
+    if(ref.indexOf(location.hostname)>-1) return "interno";
+    if(ref.indexOf("instagram")>-1) return "instagram";
+    if(ref.indexOf("facebook")>-1 || ref.indexOf("fb.")>-1) return "facebook";
+    if(ref.indexOf("whatsapp")>-1 || ref.indexOf("wa.me")>-1) return "whatsapp";
+    if(ref.indexOf("google")>-1) return "google";
+    if(ref.indexOf("tiktok")>-1) return "tiktok";
+    return "outro";
+  }catch(e){ return "direto"; }
+}
+var _origemSessao;
+var _ultimaPaginaVisita;
+function registrarVisita(){
+  if(/[?&]naocontar=1/.test(location.search)) { try{ localStorage.setItem("korpa_nao_contar","1"); }catch(e){} }
+  try{ if(localStorage.getItem("korpa_nao_contar")==="1") return; }catch(e){}
+  var hash = window.location.hash || "#home";
+  if(hash === _ultimaPaginaVisita) return;
+  _ultimaPaginaVisita = hash;
+  if(!_origemSessao){
+    try{ _origemSessao = sessionStorage.getItem("korpa_origem"); }catch(e){}
+    if(!_origemSessao){ _origemSessao = origemVisita(); try{ sessionStorage.setItem("korpa_origem", _origemSessao); }catch(e){} }
+  }
+  var prodId = null, prodName = null;
+  if(hash.indexOf("#produto/")===0){
+    prodId = decodeURIComponent(hash.replace("#produto/","")).slice(0,100);
+    try{ var pp = (typeof findProductForRoute==="function") ? findProductForRoute(hash.replace("#produto/","")) : null; if(pp) prodName = String(pp.name||"").slice(0,200); }catch(e){}
+  }
+  var ref = "";
+  try{ ref = document.referrer ? new URL(document.referrer).hostname : ""; }catch(e){}
+  sb.from("site_visitas").insert({
+    visitor_id: _getId(localStorage, "korpa_vid"),
+    session_id: _getId(sessionStorage, "korpa_sid"),
+    page: decodeURIComponent(hash).slice(0,200),
+    product_id: prodId, product_name: prodName,
+    source: _origemSessao, referrer: ref.slice(0,200),
+    device: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "celular" : "computador"
+  }).then(function(){}, function(){});
+}
+
+/* ================= POPUP: GANHE 5% (pega nome + WhatsApp) ================= */
+var LEAD_CUPOM = "PRIMEIRA5";   // cupom da aba Cupons do sistema Korpa
+var LEAD_PCT = 5;
+var LEAD_DELAY_MS = 12000;      // aparece depois de 12 segundos no site
+var _leadTimer = null;
+var _leadInicio = Date.now();
+function leadJaVisto(){ try{ return localStorage.getItem("korpa_lead_popup") === "1"; }catch(e){ return true; } }
+function marcarLeadVisto(){ try{ localStorage.setItem("korpa_lead_popup", "1"); }catch(e){} }
+function montarPopupLead(){
+  if(document.getElementById("lead-pop")) return;
+  document.body.insertAdjacentHTML("beforeend",
+    "<div class=\"lead-ov\" id=\"lead-ov\" onclick=\"fecharPopupLead()\"></div>" +
+    "<div class=\"lead-pop\" id=\"lead-pop\" role=\"dialog\" aria-label=\"Ganhe desconto\">" +
+      "<div class=\"lp-top\"><button class=\"lp-x\" onclick=\"fecharPopupLead()\" aria-label=\"Fechar\">&times;</button>" +
+        "<div class=\"lp-kicker\">Presente de boas-vindas</div>" +
+        "<div class=\"lp-big\">"+LEAD_PCT+"<small>%</small> OFF</div>" +
+        "<div class=\"lp-sub\">na sua primeira compra pagando no Pix 💕</div></div>" +
+      "<div class=\"lp-body\" id=\"lp-form\">" +
+        "<div class=\"field\"><label>Seu nome</label><input id=\"lp-nome\" type=\"text\" autocomplete=\"name\" placeholder=\"Como podemos te chamar?\"></div>" +
+        "<div class=\"field\"><label>WhatsApp (com DDD)</label><input id=\"lp-whats\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel\" placeholder=\"85999999999\" maxlength=\"15\" onkeydown=\"if(event.key==='Enter')enviarLead()\"></div>" +
+        "<button class=\"btn block\" id=\"lp-btn\" onclick=\"enviarLead()\">Quero meu cupom</button>" +
+        "<div class=\"lp-err\" id=\"lp-err\"></div>" +
+        "<div class=\"lp-fine\">Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. A gente só usa seu contato pra te mandar novidades da KORPA.</div>" +
+      "</div>" +
+      "<div class=\"lp-body\" id=\"lp-done\" style=\"display:none\">" +
+        "<p style=\"text-align:center;margin:0 0 4px\" id=\"lp-ola\"></p>" +
+        "<div class=\"lp-code\"><b>"+LEAD_CUPOM+"</b><button onclick=\"copiarCupomLead()\" id=\"lp-copy\">Copiar</button></div>" +
+        "<button class=\"btn block\" onclick=\"fecharPopupLead()\">Ir às compras</button>" +
+        "<div class=\"lp-fine\">O cupom já vai aparecer preenchido quando você finalizar a compra 💕</div>" +
+      "</div>" +
+    "</div>");
+}
+function abrirPopupLead(){
+  if(leadJaVisto()) return;
+  var pm = document.getElementById("pix-modal");
+  if(pm && pm.classList.contains("open")) return; // nao atrapalha quem ja esta finalizando
+  montarPopupLead();
+  marcarLeadVisto();
+  document.getElementById("lead-ov").classList.add("show");
+  document.getElementById("lead-pop").classList.add("show");
+}
+function fecharPopupLead(){
+  var o = document.getElementById("lead-ov"), p = document.getElementById("lead-pop");
+  if(o) o.classList.remove("show"); if(p) p.classList.remove("show");
+}
+function enviarLead(){
+  var nome = (document.getElementById("lp-nome").value || "").trim();
+  var tel = (document.getElementById("lp-whats").value || "").replace(/\D/g, "");
+  if(tel.length === 13 && tel.indexOf("55")===0) tel = tel.slice(2);
+  var err = document.getElementById("lp-err");
+  err.textContent = "";
+  if(!nome){ err.textContent = "Informe seu nome."; return; }
+  if(tel.length < 10 || tel.length > 11 || /^(\d)\1+$/.test(tel.slice(2))){ err.textContent = "Informe um WhatsApp válido, com DDD."; return; }
+  var btn = document.getElementById("lp-btn"); btn.disabled = true; btn.textContent = "Gerando seu cupom...";
+  var mostrar = function(){
+    try{
+      var saved = JSON.parse(localStorage.getItem("korpa_cliente")||"{}");
+      if(!saved["pix-name"]) saved["pix-name"] = nome;
+      if(!saved["pix-phone"]) saved["pix-phone"] = tel;
+      localStorage.setItem("korpa_cliente", JSON.stringify(saved));
+      localStorage.setItem("korpa_cupom_popup", LEAD_CUPOM);
+    }catch(e){}
+    document.getElementById("lp-ola").textContent = "Prontinho, " + nome.split(" ")[0] + "! Seu cupom é:";
+    document.getElementById("lp-form").style.display = "none";
+    document.getElementById("lp-done").style.display = "";
+  };
+  sb.from("cupom_leads").insert({ nome: nome.slice(0,120), whatsapp: tel, cupom: LEAD_CUPOM, pagina: (window.location.hash||"#home").slice(0,200) })
+    .then(function(){ mostrar(); }, function(){ mostrar(); });
+}
+function copiarCupomLead(){
+  var b = document.getElementById("lp-copy");
+  try{ navigator.clipboard.writeText(LEAD_CUPOM).then(function(){ b.textContent = "Copiado!"; }); }catch(e){ b.textContent = "Copiado!"; }
+}
+(function iniciarPopupLead(){
+  if(leadJaVisto()) return;
+  _leadTimer = setTimeout(abrirPopupLead, LEAD_DELAY_MS);
+  // no computador: tambem abre quando o mouse sai pela parte de cima (vai fechar a aba)
+  document.addEventListener("mouseout", function(e){
+    if(!e.relatedTarget && e.clientY <= 0 && !leadJaVisto() && (Date.now() - _leadInicio) > 4000){ clearTimeout(_leadTimer); abrirPopupLead(); }
+  });
+})();
 </script>
 </body>
 </html>
