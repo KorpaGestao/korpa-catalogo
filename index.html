@@ -172,7 +172,7 @@ h1,h2,h3{margin:0;}
 .pcard .pname{font-size:15px;color:var(--ink);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .pcard .pprice{font-size:17px;font-weight:700;color:var(--ink);}
 .pcard .pprice .from{font-size:12.5px;font-weight:400;color:var(--muted);}
-.old{font-size:.8em;color:var(--muted);text-decoration:line-through;font-weight:400;margin-right:6px;}
+.pixline{display:block;font-size:13px;font-weight:600;color:var(--ok);margin-top:3px;} .pixoff{display:inline-block;background:var(--pink-soft);color:var(--pink-dark);font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;} .old{font-size:.8em;color:var(--muted);text-decoration:line-through;font-weight:400;margin-right:6px;}
 .stockwarn{color:var(--warn);font-size:13px;margin-top:4px;}
 .pcard .btn{margin-top:10px;align-self:flex-start;}
 
@@ -686,12 +686,17 @@ function renderFooter(){
 
 /* ---------- HELPERS DE PRODUTO ---------- */
 function visibleProducts(list){ return list; }
+function cardFeePct(){ return (typeof CARD_FEE_PCT==="number") ? CARD_FEE_PCT : 10; }
+function cardPrice(n){ return Math.round(Number(n)*(1+cardFeePct()/100)*100)/100; }
+function pixOffPct(){ return Math.round(100*(1-1/(1+cardFeePct()/100))); }
+function pixLine(n){ return "<span class=\"pixline\">"+brl(n)+" no Pix <span class=\"pixoff\">"+pixOffPct()+"% OFF</span></span>"; }
+/* Preco em destaque = preco no cartao; preco do sistema = preco no Pix (com selo de desconto) */
 function priceHtmlFor(p, v){
-  if(p.promo_price){ return "<span class=\"old\">"+brl(p.price)+"</span>"+brl(p.promo_price); }
-  if(v && v.price!=null){ return brl(v.price); }
-  if(p.price_min!=null && p.price_max!=null && Number(p.price_min)!==Number(p.price_max)){ return "<span class=\"from\">a partir de </span>"+brl(p.price_min); }
-  if(p.price_min!=null){ return brl(p.price_min); }
-  return brl(p.price);
+  if(p.promo_price){ return "<span class=\"old\">"+brl(cardPrice(p.price))+"</span>"+brl(cardPrice(p.promo_price))+pixLine(p.promo_price); }
+  if(v && v.price!=null){ return brl(cardPrice(v.price))+pixLine(v.price); }
+  if(p.price_min!=null && p.price_max!=null && Number(p.price_min)!==Number(p.price_max)){ return "<span class=\"from\">a partir de </span>"+brl(cardPrice(p.price_min))+pixLine(p.price_min); }
+  if(p.price_min!=null){ return brl(cardPrice(p.price_min))+pixLine(p.price_min); }
+  return brl(cardPrice(p.price))+pixLine(p.price);
 }
 function productStock(p){
   if(!p.variations || !p.variations.length) return (typeof p.stock==="number") ? p.stock : null;
