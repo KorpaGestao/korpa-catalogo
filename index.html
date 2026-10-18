@@ -172,7 +172,7 @@ h1,h2,h3{margin:0;}
 .pcard .pname{font-size:15px;color:var(--ink);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .pcard .pprice{font-size:17px;font-weight:700;color:var(--ink);}
 .pcard .pprice .from{font-size:12.5px;font-weight:400;color:var(--muted);}
-.pixline{display:block;font-size:13px;font-weight:600;color:var(--ok);margin-top:3px;} .pixoff{display:inline-block;background:var(--pink-soft);color:var(--pink-dark);font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;} .old{font-size:.8em;color:var(--muted);text-decoration:line-through;font-weight:400;margin-right:6px;}
+.ci-price .pixline{font-size:12px;text-align:right;} .pixtotal span:last-child{color:var(--ok);} .pixline{display:block;font-size:13px;font-weight:600;color:var(--ok);margin-top:3px;} .pixoff{display:inline-block;background:var(--pink-soft);color:var(--pink-dark);font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;} .old{font-size:.8em;color:var(--muted);text-decoration:line-through;font-weight:400;margin-right:6px;}
 .stockwarn{color:var(--warn);font-size:13px;margin-top:4px;}
 .pcard .btn{margin-top:10px;align-self:flex-start;}
 
@@ -705,6 +705,7 @@ function productStock(p){
   return known ? total : null;
 }
 function stockWarnText(n){
+  return ""; /* aviso de ultimas pecas desativado */
   if(n===1) return "Última peça!";
   if(n!=null && n>1 && n<=3) return "Últimas unidades!";
   return "";
@@ -1547,7 +1548,7 @@ function cartItemHtml(item, idx){
       "<div class=\"ci-top\"><div class=\"ci-name\">"+esc(item.name)+"</div><button class=\"ci-remove\" aria-label=\"Remover\" onclick=\"removeCartItem("+idx+")\">"+ICON.trash+"</button></div>" +
       (item.variation ? "<div class=\"ci-variation\">"+colorDotHtml(item.color)+esc(item.variation)+"</div>" : "") +
       "<div class=\"ci-bottom\"><div class=\"ci-qty\"><button onclick=\"updateCartQty("+idx+",-1)\" aria-label=\"Menos\">−</button><span>"+item.qty+"</span><button onclick=\"updateCartQty("+idx+",1)\" aria-label=\"Mais\">+</button></div>" +
-      "<div class=\"ci-price\">"+brl(item.unitPrice*item.qty)+"</div></div>" +
+      "<div class=\"ci-price\">"+brl(cardPrice(item.unitPrice*item.qty))+"<span class=\"pixline\">"+brl(item.unitPrice*item.qty)+" no Pix</span></div></div>" +
     "</div></div>";
 }
 
@@ -1607,7 +1608,7 @@ function renderCartTotals(){
   var el;
   if((el = document.getElementById("cart-subtotal"))) el.textContent = brl(sub);
   if((el = document.getElementById("cart-freight"))) el.textContent = f ? (f.combinarDireto ? "A combinar" : (f.value>0 ? brl(f.value) : "Grátis")) : "Calcule pelo CEP";
-  if((el = document.getElementById("cart-total"))) el.textContent = brl(sub + (f && !f.combinarDireto ? f.value : 0));
+  var totPix = sub + (f && !f.combinarDireto ? f.value : 0); if((el = document.getElementById("cart-total"))) el.textContent = brl(totPix); if((el = document.getElementById("cart-total-card"))) el.textContent = brl(cardPrice(totPix));
   var btn = document.getElementById("cart-checkout-btn");
   if(btn) btn.disabled = cart.length===0;
 }
@@ -1872,7 +1873,7 @@ function finalizarPedidoWhatsapp(){
   var msg = "Olá! Gostaria de finalizar este pedido pelo site:\n\n" + lines.join("\n") +
     "\n\nSubtotal: " + brl(t.sub) +
     "\nEntrega: " + currentFreight.nome + " - " + freightText +
-    (cartao ? ("\nAcréscimo cartão ("+CARD_FEE_PCT+"%): " + brl(t.acresc)) : "") +
+    (cartao ? ("\nDiferença do cartão: " + brl(t.acresc)) : "") +
     "\nTotal" + (cartao ? " no cartão" : "") + ": " + brl(t.total) + (currentFreight.combinarDireto ? " + frete" : "") +
     "\nPagamento: " + (cartao ? "Cartão de crédito (quero receber o link de pagamento)" : "Pix") +
     "\n\nNome: " + d.name +
@@ -1907,9 +1908,8 @@ document.body.insertAdjacentHTML("beforeend",
         "<div class=\"ship-out\" id=\"cart-ship-out\"></div>" +
         "<button class=\"linkbtn\" style=\"font-size:13px;margin-top:8px\" onclick=\"combinarEntrega()\">Prefiro combinar a entrega/retirada pelo WhatsApp</button>" +
       "</div>" +
-      "<div class=\"sumrow\"><span>Subtotal</span><span id=\"cart-subtotal\">R$ 0,00</span></div>" +
       "<div class=\"sumrow\"><span>Frete</span><span id=\"cart-freight\">Calcule pelo CEP</span></div>" +
-      "<div class=\"sumrow total\"><span>Total</span><span id=\"cart-total\">R$ 0,00</span></div>" +
+      "<div class=\"sumrow\"><span>Total no cartão</span><span id=\"cart-total-card\">R$ 0,00</span></div>" + "<div class=\"sumrow total pixtotal\"><span>Total no Pix <span class=\"pixoff\">"+pixOffPct()+"% OFF</span></span><span id=\"cart-total\">R$ 0,00</span></div>" +
       "<button class=\"btn block\" id=\"cart-checkout-btn\" onclick=\"openPixModal()\" disabled>Finalizar compra</button>" +
       "<button class=\"linkbtn\" style=\"display:block;margin:12px auto 0\" onclick=\"toggleCart(false)\">Continuar comprando</button>" +
     "</div>" +
