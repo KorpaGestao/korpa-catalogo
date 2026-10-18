@@ -559,9 +559,14 @@ function goHome(){
 function allCategories(){
   var cats = [];
   buildDisplayProducts().forEach(function(p){ if(p.category && cats.indexOf(p.category)===-1) cats.push(p.category); });
-  return cats.sort(function(a,b){ return a.localeCompare(b,"pt-BR"); });
+  cats.sort(function(a,b){ return a.localeCompare(b,"pt-BR"); });
+  FABRIC_CATS.forEach(function(f){ if(cats.indexOf(f)===-1 && countInCategory(f)>0) cats.push(f); });
+  return cats;
 }
-function countInCategory(c){ return buildDisplayProducts().filter(function(p){ return p.category===c; }).length; }
+var FABRIC_CATS = ["Poliamida","Suplex"]; /* categorias por tecido (lidas da descrição), sempre por último */
+function fabricOf(p){ var t=((p.specs||"")+" "+(p.description||"")).toLowerCase(); if(t.indexOf("poliamida")>-1) return "Poliamida"; if(t.indexOf("suplex")>-1) return "Suplex"; return null; }
+function inCategory(p,c){ return FABRIC_CATS.indexOf(c)>-1 ? fabricOf(p)===c : p.category===c; }
+function countInCategory(c){ return buildDisplayProducts().filter(function(p){ return inCategory(p,c); }).length; }
 
 function headerHtml(activeKey){
   var cats = allCategories();
@@ -787,7 +792,7 @@ function heroSlides(list){
   });
   allCategories().forEach(function(c){
     if(slides.length>=4) return;
-    var p = list.find(function(x){ return x.category===c && x.in_stock && x.images && x.images[0]; });
+    var p = list.find(function(x){ return inCategory(x,c) && x.in_stock && x.images && x.images[0]; });
     if(p) slides.push({title:c, eyebrow:"Coleção", desc:"Conforto e caimento pra treinar e pro dia a dia.", img:p.images[0], href:"#categoria/"+encodeURIComponent(c)});
   });
   return slides;
@@ -859,7 +864,7 @@ function renderHome(categoryFilter){
   }
 
   if(categoryFilter){
-    var catResults = sortList(displayList.filter(function(p){ return p.category===categoryFilter; }));
+    var catResults = sortList(displayList.filter(function(p){ return inCategory(p,categoryFilter); }));
     document.title = categoryFilter + " · KORPA Moda Fitness Feminina";
     body = "<div class=\"wrap\"><div class=\"crumbs\"><a onclick=\"goHome()\">Início</a> &gt; <a onclick=\"scrollToAll()\">Produtos</a> &gt; "+esc(categoryFilter)+"</div>" +
       "<section class=\"section\" style=\"padding-top:12px\"><div class=\"section-head\"><h2>"+esc(categoryFilter)+"</h2><span class=\"muted\">"+catResults.length+" "+(catResults.length===1?"peça":"peças")+"</span></div>" +
@@ -879,8 +884,8 @@ function renderHome(categoryFilter){
   var cats = allCategories();
   var catsHtml = cats.length ? ("<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\" style=\"justify-content:center\"><h2>Compre por categoria</h2></div><div class=\"cats\">" +
     cats.map(function(c){
-      var CAT_COVER = { "Shorts Duplos": "87fbpmhe" }; /* capa fixa da categoria (id do produto) */
-      var p = (CAT_COVER[c] && displayList.find(function(x){ return x.id === CAT_COVER[c] && x.images && x.images[0]; })) || displayList.find(function(x){ return x.category===c && x.images && x.images[0]; });
+      var CAT_COVER = { "Shorts Duplos": "Short Duplo Uniforme", "Casacos": "Casaco Importado" }; /* capa fixa da categoria (id do produto) */
+      var p = (CAT_COVER[c] && displayList.find(function(x){ return String(x.name||"").trim().toLowerCase() === CAT_COVER[c].toLowerCase() && x.images && x.images[0]; })) || displayList.find(function(x){ return inCategory(x,c) && x.images && x.images[0]; });
       return "<div class=\"cat\" onclick=\"window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\"><div class=\"cat-img\">"+(p?"<img src=\""+esc(p.images[0])+"\" alt=\"\" loading=\"lazy\">":esc(c.charAt(0)))+"</div><div class=\"cat-name\">"+esc(c)+"</div></div>";
     }).join("") + "</div></div></section>") : "";
 
