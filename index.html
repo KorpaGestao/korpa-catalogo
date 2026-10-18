@@ -884,7 +884,7 @@ function renderHome(categoryFilter){
   var cats = allCategories();
   var catsHtml = cats.length ? ("<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\" style=\"justify-content:center\"><h2>Compre por categoria</h2></div><div class=\"cats\">" +
     cats.map(function(c){
-      var CAT_COVER = { "Shorts Duplos": "Short Duplo Uniforme", "Casacos": "Casaco Importado" }; /* capa fixa da categoria (id do produto) */
+      var CAT_COVER = { "Shorts Duplos": "Short Duplo Uniforme", "Casacos": "Casaco Importado", "Blusas": "Blusa Virginia" }; /* capa fixa da categoria (id do produto) */
       var p = (CAT_COVER[c] && displayList.find(function(x){ return String(x.name||"").trim().toLowerCase() === CAT_COVER[c].toLowerCase() && x.images && x.images[0]; })) || displayList.find(function(x){ return inCategory(x,c) && x.images && x.images[0]; });
       return "<div class=\"cat\" onclick=\"window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\"><div class=\"cat-img\">"+(p?"<img src=\""+esc(p.images[0])+"\" alt=\"\" loading=\"lazy\">":esc(c.charAt(0)))+"</div><div class=\"cat-name\">"+esc(c)+"</div></div>";
     }).join("") + "</div></div></section>") : "";
