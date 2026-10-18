@@ -879,7 +879,7 @@ function renderHome(categoryFilter){
     .sort(function(a,b){ return Number(b.units_sold) - Number(a.units_sold); }).slice(0, 6);
   if(!featured.length) featured = displayList.filter(function(p){ return p.featured && p.in_stock; });
   /* ordem fixa dos destaques (nome do produto); os que não estão na lista vão pro fim */
-  var FEATURED_ORDER = ["Conjunto Short S/ Bolso","Macaquinho Premium","Conjunto de Short Premium","Casaco Importado","Conjunto Short Poliamida","Macaquinho Live"];
+  var FEATURED_ORDER = ["Conjunto Short S/ Bolso","Conjunto Short Poliamida","Conjunto de Short Premium","Casaco Importado","Macaquinho Premium","Macaquinho Live"];
   featured = featured.slice().sort(function(a,b){ var ia=FEATURED_ORDER.indexOf(a.name), ib=FEATURED_ORDER.indexOf(b.name); if(ia<0) ia=999; if(ib<0) ib=999; return ia-ib; });
   var promos = displayList.filter(function(p){ return p.promo_price && p.in_stock; });
   var newest = displayList.filter(function(p){ return p.in_stock; }).slice(0,12);
