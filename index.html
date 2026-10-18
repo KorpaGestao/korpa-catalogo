@@ -1744,14 +1744,14 @@ function renderCheckoutSummary(){
     "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
     (t.desc>0 ? "<div class=\"sumrow\" style=\"color:#2e7d4f\"><span>Cupom "+esc(cupomAplicado.codigo)+" (-"+cupomAplicado.pct+"%)</span><span>- "+brl(t.desc)+"</span></div>" : "") +
     (cupomAplicado && payMethod==="cartao" ? "<div class=\"sumrow muted\" style=\"font-size:12.5px\"><span>O cupom "+esc(cupomAplicado.codigo)+" vale para pagamento no Pix</span><span></span></div>" : "") +
-    (t.acresc>0 ? "<div class=\"sumrow\"><span>Acréscimo cartão ("+CARD_FEE_PCT+"%)</span><span>"+brl(t.acresc)+"</span></div>" : "") +
+    (t.acresc>0 ? "<div class=\"sumrow\"><span>Diferença do cartão</span><span>"+brl(t.acresc)+"</span></div>" : "") +
     "<div class=\"sumrow total\"><span>Total"+(payMethod==="cartao"?" no cartão":" no Pix")+"</span><span id=\"pix-total-value\">"+brl(t.total)+(f.combinarDireto?" + frete":"")+"</span></div>";
   var pm = document.getElementById("pay-methods");
   if(pm){
     var pixOk = pixPermitido();
     pm.innerHTML =
-      "<label class=\"ship-opt\""+(pixOk?"":" style=\"opacity:.55\"")+"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="pix"?"checked":"")+" "+(pixOk?"":"disabled")+" onchange=\"setPayMethod('pix')\"><div><div class=\"sname\">Pix</div><div class=\"sdays\">"+(pixOk?"Pague agora aqui no site, aprovação na hora":"Disponível com o frete calculado pelo CEP")+"</div></div></div><div class=\"sprice\">"+brl(t.pixBase)+"</div></label>" +
-      "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="cartao"?"checked":"")+" onchange=\"setPayMethod('cartao')\"><div><div class=\"sname\">Cartão de crédito</div><div class=\"sdays\">+"+CARD_FEE_PCT+"% · enviamos o link de pagamento pelo WhatsApp</div></div></div><div class=\"sprice\">"+brl(round2(t.cardBase*(1+CARD_FEE_PCT/100)))+"</div></label>";
+      "<label class=\"ship-opt\""+(pixOk?"":" style=\"opacity:.55\"")+"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="pix"?"checked":"")+" "+(pixOk?"":"disabled")+" onchange=\"setPayMethod('pix')\"><div><div class=\"sname\">Pix</div><div class=\"sdays\">"+(pixOk?"Pague agora aqui no site, aprovação na hora <span class=\"pixoff\">"+pixOffPct()+"% OFF</span>":"Disponível com o frete calculado pelo CEP")+"</div></div></div><div class=\"sprice\">"+brl(t.pixBase)+"</div></label>" +
+      "<label class=\"ship-opt\"><div style=\"display:flex;align-items:center\"><input type=\"radio\" name=\"paym\" "+(payMethod==="cartao"?"checked":"")+" onchange=\"setPayMethod('cartao')\"><div><div class=\"sname\">Cartão de crédito</div><div class=\"sdays\">Enviamos o link de pagamento pelo WhatsApp</div></div></div><div class=\"sprice\">"+brl(round2(t.cardBase*(1+CARD_FEE_PCT/100)))+"</div></label>";
   }
   var btn = document.getElementById("checkout-submit");
   if(btn) btn.innerHTML = payMethod==="pix" ? "Gerar Pix e pagar" : (ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Enviar pedido e receber o link");
