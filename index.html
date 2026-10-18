@@ -1789,12 +1789,41 @@ function avisarLojaPix(){
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
 }
 
+/* Pedido pelo WhatsApp/cartao: salva como "pendente_cartao" no gestao (Pedidos Online).
+   O estoque so baixa quando a loja confirmar o pagamento la. Nao trava a cliente se falhar. */
+function registrarPedidoPendente(d){
+  try{
+    var itens = cart.map(function(it){
+      var vid = it.variationId || null;
+      if(!vid && it.variation){
+        var prod = products.find(function(x){ return x.id===it.id; });
+        var match = prod && (prod.variations||[]).find(function(v){ return ((v.size||"") + (v.color?(" / "+v.color):"")) === it.variation; });
+        if(match) vid = match.id;
+      }
+      return { productId: it.id, variationId: vid, qty: it.qty };
+    });
+    var semFrete = !currentFreight || currentFreight.combinarDireto || !currentFreight.servicoId;
+    fetch(SUPABASE_URL + "/functions/v1/criar-pedido", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+      body: JSON.stringify({
+        modo: "cartao_whatsapp", items: itens,
+        customerName: d.name, customerPhone: d.phone,
+        customerAddress: (d.address || "") + (d.complement ? (" - " + d.complement) : ""),
+        cep: semFrete ? "" : (currentFreight.cep || ""),
+        freightOption: { servicoId: semFrete ? null : currentFreight.servicoId },
+        cupom: d.coupon || ""
+      })
+    }).catch(function(){});
+  }catch(e){}
+}
 function finalizarPedidoWhatsapp(){
   var d = lerDadosCliente(); if(!d) return;
   var t = checkoutTotals();
   var lines = cart.map(function(i){ return "• "+i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+" - "+brl(i.unitPrice*i.qty); });
   var freightText = currentFreight.combinarDireto ? "A combinar" : (t.fr>0 ? brl(t.fr) : "Grátis");
   var cartao = payMethod==="cartao";
+  registrarPedidoPendente(d);
   var msg = "Olá! Gostaria de finalizar este pedido pelo site:\n\n" + lines.join("\n") +
     "\n\nSubtotal: " + brl(t.sub) +
     "\nEntrega: " + currentFreight.nome + " - " + freightText +
