@@ -1075,7 +1075,7 @@ function renderProductPage(id){
       "<div class=\"info-col\">" +
         "<h1 class=\"p-title\">"+esc(p.name)+"</h1>" +
         "<div class=\"p-price\" id=\"detail-price\">"+priceHtmlFor(p,null)+"</div>" +
-        (productKit(p) ? "<div class=\"kitpill\">"+esc(kitTexto(productKit(p)))+" no Pix <small>· misture modelos e cores da promoção</small></div>" : "") +
+        (productKit(p) ? "<div class=\"kitpill\">"+esc(kitTexto(productKit(p)))+" no Pix <small>· misture modelos e cores · não é cumulativa com cupons de desconto</small></div>" : "") +
         "<div id=\"variation-pickers\">"+pickersHtml(p)+"</div>" +
         "<div id=\"detail-stock\">"+detailStockHtml(p)+"</div>" +
         "<div id=\"detail-actions\">"+detailActionsHtml(p, null)+"</div>" +
@@ -1692,7 +1692,7 @@ function renderCartTotals(){
   if((el = document.getElementById("cart-freight"))) el.textContent = f ? (f.combinarDireto ? "A combinar" : (f.value>0 ? brl(f.value) : "Grátis")) : "Calcule pelo CEP";
   var kr = cartKit();
   if((el = document.getElementById("cart-kit"))) el.innerHTML =
-    (kr.desconto>0 ? "<div class=\"sumrow kitrow\"><span>"+esc(kitResumoTexto(kr))+"</span><span>- "+brl(kr.desconto)+"</span></div>" : "") +
+    (kr.desconto>0 ? "<div class=\"sumrow kitrow\"><span>"+esc(kitResumoTexto(kr))+"</span><span>- "+brl(kr.desconto)+"</span></div><div class=\"sumrow muted\" style=\"font-size:12.5px;margin-top:-2px\"><span>Promoção não cumulativa com cupons de desconto</span><span></span></div>" : "") +
     (kr.falta ? "<div class=\"kit-hint\">Adicione mais "+(kr.falta.faltam===1?"uma peça":kr.falta.faltam+" peças")+" da promoção e leve "+kr.falta.kit.qtd+" por "+brl(kr.falta.kit.preco)+" no Pix 💕</div>" : "");
   sub = round2(sub - kr.desconto);
   var totPix = sub + (f && !f.combinarDireto ? f.value : 0); if((el = document.getElementById("cart-total"))) el.textContent = brl(totPix); if((el = document.getElementById("cart-total-card"))) el.textContent = brl(cardPrice(totPix));
@@ -2097,7 +2097,7 @@ function aplicarCupom(silencioso){
     var d = res && res.data;
     if(d && d.valid){
       cupomAplicado = { codigo: codigo, pct: Number(d.descontoPct) || 0 };
-      setCupomMsg("Cupom aplicado! " + cupomAplicado.pct + "% de desconto nas peças no pagamento via Pix 💕", "ok");
+      setCupomMsg("Cupom aplicado! " + cupomAplicado.pct + "% de desconto nas peças no pagamento via Pix 💕" + (cartKit().desconto>0 ? " O cupom não vale para as peças da promoção Leve 2 (não é cumulativo)." : ""), "ok");
     } else {
       cupomAplicado = null;
       setCupomMsg((d && d.message) || "Não foi possível validar o cupom agora.", "bad");
@@ -2195,7 +2195,7 @@ function montarPopupLead(){
         "<div class=\"field\"><label>WhatsApp (com DDD)</label><input id=\"lp-whats\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel\" placeholder=\"85999999999\" maxlength=\"15\" onkeydown=\"if(event.key==='Enter')enviarLead()\"></div>" +
         "<button class=\"btn block\" id=\"lp-btn\" onclick=\"enviarLead()\">Quero meu cupom</button>" +
         "<div class=\"lp-err\" id=\"lp-err\"></div>" +
-        "<div class=\"lp-fine\">Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. A gente só usa seu contato pra te mandar novidades da KORPA.</div>" +
+        "<div class=\"lp-fine\">Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. Não é cumulativo com promoções (ex.: Leve 2 por R$ 70). A gente só usa seu contato pra te mandar novidades da KORPA.</div>" +
       "</div>" +
       "<div class=\"lp-body\" id=\"lp-done\" style=\"display:none\">" +
         "<p style=\"text-align:center;margin:0 0 4px\" id=\"lp-ola\"></p>" +
