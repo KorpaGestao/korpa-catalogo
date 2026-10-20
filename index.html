@@ -166,6 +166,11 @@ h1,h2,h3{margin:0;}
 .badge{position:absolute;top:10px;left:10px;font-size:11.5px;padding:4px 9px;letter-spacing:.03em;z-index:2;}
 .badge.oos{background:#fff;color:var(--ink);border:1px solid var(--ink);}
 .badge.promo{background:var(--pink);color:#fff;}
+.badge.kit{background:var(--pink-dark);color:#fff;}
+.kitpill{display:inline-block;margin:8px 0 2px;padding:6px 12px;border-radius:999px;background:var(--pink-soft);border:1px solid var(--pink-line);color:var(--pink-dark);font-size:13.5px;font-weight:600;}
+.kitpill small{font-weight:400;color:var(--ink);opacity:.75;}
+.kit-hint{font-size:13px;color:var(--pink-dark);background:var(--pink-soft);border-radius:8px;padding:8px 10px;margin:6px 0 10px;}
+.sumrow.kitrow{color:#2e7d4f;}
 .badge.last{background:var(--ink);color:#fff;}
 .swatches{display:flex;gap:6px;margin-bottom:8px;min-height:16px;flex-wrap:wrap;}
 .swatch{width:15px;height:15px;border-radius:50%;border:1px solid rgba(0,0,0,.15);}
@@ -741,6 +746,81 @@ function effectivePrice(p){
   if(p.price_min!=null) return Number(p.price_min);
   return Number(p.price||0);
 }
+/* ---------- PROMOCAO "LEVE N POR R$ X" (kits da tabela catalog_promo_kits, via catalog_products.promo_kit) ---------- */
+// Regra "Leve N por R$ X" (out/2026). MESMA logica no site (index.html) e no
+// criar-pedido (kit.ts) - manter as duas copias iguais.
+// lines: [{productId, qty, price, ...}]  kits: [{id, nome, qtd, preco, product_ids:[...]}]
+// Junta as unidades de cada kit, da mais cara pra mais barata; a cada "qtd"
+// unidades o grupo sai por "preco" (rateado entre as pecas). Sobra fica no preco normal.
+function aplicarKits(lines, kits){
+  var r2 = function(n){ return Math.round(n*100)/100; };
+  var kitDe = {};
+  (kits||[]).forEach(function(k){ (k.product_ids||[]).forEach(function(pid){ if(!kitDe[pid]) kitDe[pid] = k; }); });
+  var unidades = {}; // kitId -> [{li, price}]
+  lines.forEach(function(l, li){
+    var k = kitDe[l.productId]; if(!k) return;
+    for(var u=0; u<l.qty; u++){ (unidades[k.id] = unidades[k.id] || []).push({ li: li, price: Number(l.price)||0, novo: null, kit: k }); }
+  });
+  var desconto = 0, bruto = 0, grupos = [];
+  Object.keys(unidades).forEach(function(kid){
+    var us = unidades[kid].slice().sort(function(a,b){ return (b.price-a.price) || (a.li-b.li); });
+    var k = us[0].kit, qtd = Math.max(2, Number(k.qtd)||2), preco = Number(k.preco)||0;
+    for(var g=0; g+qtd<=us.length; g+=qtd){
+      var grp = us.slice(g, g+qtd);
+      var soma = r2(grp.reduce(function(s,x){ return s+x.price; }, 0));
+      if(!(preco > 0) || soma <= preco) continue;
+      var acum = 0;
+      grp.forEach(function(x, j){
+        if(j < grp.length-1){ x.novo = r2(x.price * preco / soma); acum = r2(acum + x.novo); }
+        else x.novo = r2(preco - acum);
+      });
+      bruto = r2(bruto + soma); desconto = r2(desconto + soma - preco);
+      grupos.push({ kitId: k.id, nome: k.nome, pecas: qtd, preco: preco, de: soma });
+    }
+  });
+  var novas = [];
+  lines.forEach(function(l, li){
+    var todas = [];
+    Object.keys(unidades).forEach(function(kid){ unidades[kid].forEach(function(x){ if(x.li===li) todas.push(x); }); });
+    var porPreco = {}, normal = l.qty, kitId = null;
+    todas.forEach(function(x){ if(x.novo!=null){ normal--; kitId = x.kit.id; porPreco[x.novo] = (porPreco[x.novo]||0) + 1; } });
+    if(normal > 0){ var a = Object.assign({}, l); a.qty = normal; novas.push(a); }
+    Object.keys(porPreco).forEach(function(p){ var b = Object.assign({}, l); b.qty = porPreco[p]; b.price = Number(p); b.promoKit = kitId; b.precoOriginal = Number(l.price); novas.push(b); });
+  });
+  return { lines: novas, desconto: desconto, bruto: bruto, grupos: grupos };
+}
+
+function kitsAtivos(){
+  var porId = {};
+  products.forEach(function(p){
+    var k = p.promo_kit; if(!k || !k.id) return;
+    if(!porId[k.id]) porId[k.id] = { id:k.id, nome:k.nome, qtd:Number(k.qtd)||2, preco:Number(k.preco)||0, product_ids:[] };
+    porId[k.id].product_ids.push(p.id);
+  });
+  return Object.keys(porId).map(function(id){ return porId[id]; });
+}
+function productKit(p){
+  if(p.promo_kit) return p.promo_kit;
+  if(p._members){ var m = products.find(function(x){ return p._members.indexOf(x.id)>-1 && x.promo_kit; }); if(m) return m.promo_kit; }
+  return null;
+}
+function kitTexto(k){ return "Leve "+k.qtd+" por "+brl(k.preco).replace(",00",""); }
+function cartKit(){
+  var kits = kitsAtivos();
+  if(!kits.length || !cart.length) return { desconto:0, bruto:0, grupos:[], falta:null };
+  var r = aplicarKits(cart.map(function(i){ return { productId:i.id, qty:i.qty, price:Number(i.unitPrice)||0 }; }), kits);
+  var falta = null;
+  kits.forEach(function(k){
+    var n = cart.filter(function(i){ return k.product_ids.indexOf(i.id)>-1; }).reduce(function(s,i){ return s+i.qty; }, 0);
+    if(n % k.qtd !== 0 && !falta) falta = { kit:k, faltam: k.qtd - (n % k.qtd) };
+  });
+  r.falta = falta;
+  return r;
+}
+function kitResumoTexto(r){
+  var nomes = []; r.grupos.forEach(function(g){ if(nomes.indexOf(g.nome)===-1) nomes.push(g.nome); });
+  return "Promoção " + nomes.join(", ");
+}
 function routeId(p){ return "#produto/"+encodeURIComponent(p.id); }
 function swatchHtml(color){
   var hex = colorNameToHex(color) || "#d9d9d9";
@@ -753,7 +833,8 @@ function productCardHtml(p){
   var stock = productStock(p);
   var warn = p.in_stock ? stockWarnText(stock) : "";
   var badge = !p.in_stock ? "<span class=\"badge oos\">Esgotado</span>" :
-    (p.promo_price ? "<span class=\"badge promo\">-"+Math.round((1-Number(p.promo_price)/Number(p.price||p.promo_price))*100)+"%</span>" : "");
+    (p.promo_price ? "<span class=\"badge promo\">-"+Math.round((1-Number(p.promo_price)/Number(p.price||p.promo_price))*100)+"%</span>" :
+     (productKit(p) ? "<span class=\"badge kit\">"+esc(kitTexto(productKit(p)))+"</span>" : ""));
   var safeName = esc(p.name).replace(/'/g,"");
   return "<a class=\"pcard\" href=\""+routeId(p)+"\">" +
     "<div class=\"imgwrap\">" +
@@ -994,6 +1075,7 @@ function renderProductPage(id){
       "<div class=\"info-col\">" +
         "<h1 class=\"p-title\">"+esc(p.name)+"</h1>" +
         "<div class=\"p-price\" id=\"detail-price\">"+priceHtmlFor(p,null)+"</div>" +
+        (productKit(p) ? "<div class=\"kitpill\">"+esc(kitTexto(productKit(p)))+" no Pix <small>· misture modelos e cores da promoção</small></div>" : "") +
         "<div id=\"variation-pickers\">"+pickersHtml(p)+"</div>" +
         "<div id=\"detail-stock\">"+detailStockHtml(p)+"</div>" +
         "<div id=\"detail-actions\">"+detailActionsHtml(p, null)+"</div>" +
@@ -1608,6 +1690,11 @@ function renderCartTotals(){
   var el;
   if((el = document.getElementById("cart-subtotal"))) el.textContent = brl(sub);
   if((el = document.getElementById("cart-freight"))) el.textContent = f ? (f.combinarDireto ? "A combinar" : (f.value>0 ? brl(f.value) : "Grátis")) : "Calcule pelo CEP";
+  var kr = cartKit();
+  if((el = document.getElementById("cart-kit"))) el.innerHTML =
+    (kr.desconto>0 ? "<div class=\"sumrow kitrow\"><span>"+esc(kitResumoTexto(kr))+"</span><span>- "+brl(kr.desconto)+"</span></div>" : "") +
+    (kr.falta ? "<div class=\"kit-hint\">Adicione mais "+(kr.falta.faltam===1?"uma peça":kr.falta.faltam+" peças")+" da promoção e leve "+kr.falta.kit.qtd+" por "+brl(kr.falta.kit.preco)+" no Pix 💕</div>" : "");
+  sub = round2(sub - kr.desconto);
   var totPix = sub + (f && !f.combinarDireto ? f.value : 0); if((el = document.getElementById("cart-total"))) el.textContent = brl(totPix); if((el = document.getElementById("cart-total-card"))) el.textContent = brl(cardPrice(totPix));
   var btn = document.getElementById("cart-checkout-btn");
   if(btn) btn.disabled = cart.length===0;
@@ -1713,7 +1800,7 @@ function updatePixTotalDisplay(){
   var el = document.getElementById("pix-total-value");
   if(!el) return;
   var freightVal = (currentFreight && !currentFreight.combinarDireto) ? currentFreight.value : 0;
-  el.textContent = brl(cartTotal() + freightVal) + ((currentFreight && currentFreight.combinarDireto) ? " + frete" : "");
+  el.textContent = brl(round2(cartTotal() - cartKit().desconto) + freightVal) + ((currentFreight && currentFreight.combinarDireto) ? " + frete" : "");
 }
 function backToCart(){ closePixModal(); toggleCart(true); }
 
@@ -1723,13 +1810,15 @@ var payMethod = "pix";
 function pixPermitido(){ return !!(currentFreight && !currentFreight.combinarDireto && currentFreight.servicoId && currentFreight.cep); }
 function round2(n){ return Math.round(n*100)/100; }
 function checkoutTotals(){
-  var sub = cartTotal();
+  var kr = cartKit();
+  var sub = round2(cartTotal() - kr.desconto);
+  var foraDoKit = round2(cartTotal() - kr.bruto);
   var fr = (currentFreight && !currentFreight.combinarDireto) ? Number(currentFreight.value)||0 : 0;
-  var descPix = cupomAplicado ? round2(sub * cupomAplicado.pct/100) : 0;
+  var descPix = cupomAplicado ? round2(foraDoKit * cupomAplicado.pct/100) : 0;
   var desc = payMethod==="pix" ? descPix : 0;
   var base = round2(sub - desc + fr);
   var acresc = payMethod==="cartao" ? round2(base * CARD_FEE_PCT/100) : 0;
-  return { sub: sub, fr: fr, desc: desc, base: base, pixBase: round2(sub - descPix + fr), cardBase: round2(sub + fr), acresc: acresc, total: round2(base + acresc) };
+  return { kit: kr, sub: sub, fr: fr, desc: desc, base: base, pixBase: round2(sub - descPix + fr), cardBase: round2(sub + fr), acresc: acresc, total: round2(base + acresc) };
 }
 function setPayMethod(m){
   if(m==="pix" && !pixPermitido()){ showToast("Pix no site precisa do frete calculado pelo CEP 💕"); m = "cartao"; }
@@ -1742,6 +1831,8 @@ function renderCheckoutSummary(){
   var el = document.getElementById("checkout-summary");
   if(el) el.innerHTML =
     cart.map(function(i){ return "<div class=\"sumrow\"><span>"+i.qty+"x "+esc(i.name)+(i.variation?(" <span class=\"muted\">("+esc(i.variation)+")</span>"):"")+"</span><span>"+brl(i.unitPrice*i.qty)+"</span></div>"; }).join("") +
+    (t.kit.desconto>0 ? "<div class=\"sumrow kitrow\" style=\"margin-top:8px\"><span>"+esc(kitResumoTexto(t.kit))+"</span><span>- "+brl(t.kit.desconto)+"</span></div>" : "") +
+    (cupomAplicado && t.kit.desconto>0 ? "<div class=\"sumrow muted\" style=\"font-size:12.5px\"><span>O cupom não vale para as peças da promoção</span><span></span></div>" : "") +
     "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
     (t.desc>0 ? "<div class=\"sumrow\" style=\"color:#2e7d4f\"><span>Cupom "+esc(cupomAplicado.codigo)+" (-"+cupomAplicado.pct+"%)</span><span>- "+brl(t.desc)+"</span></div>" : "") +
     (cupomAplicado && payMethod==="cartao" ? "<div class=\"sumrow muted\" style=\"font-size:12.5px\"><span>O cupom "+esc(cupomAplicado.codigo)+" vale para pagamento no Pix</span><span></span></div>" : "") +
@@ -1871,6 +1962,7 @@ function finalizarPedidoWhatsapp(){
   var cartao = payMethod==="cartao";
   registrarPedidoPendente(d);
   var msg = "Olá! Gostaria de finalizar este pedido pelo site:\n\n" + lines.join("\n") +
+    (t.kit.desconto>0 ? ("\n\n" + kitResumoTexto(t.kit) + ": - " + brl(t.kit.desconto)) : "") +
     "\n\nSubtotal: " + brl(t.sub) +
     "\nEntrega: " + currentFreight.nome + " - " + freightText +
     (cartao ? ("\nDiferença do cartão: " + brl(t.acresc)) : "") +
@@ -1908,6 +2000,7 @@ document.body.insertAdjacentHTML("beforeend",
         "<div class=\"ship-out\" id=\"cart-ship-out\"></div>" +
         "<button class=\"linkbtn\" style=\"font-size:13px;margin-top:8px\" onclick=\"combinarEntrega()\">Prefiro combinar a entrega/retirada pelo WhatsApp</button>" +
       "</div>" +
+      "<div id=\"cart-kit\"></div>" +
       "<div class=\"sumrow\"><span>Frete</span><span id=\"cart-freight\">Calcule pelo CEP</span></div>" +
       "<div class=\"sumrow\"><span>Total no cartão</span><span id=\"cart-total-card\">R$ 0,00</span></div>" + "<div class=\"sumrow total pixtotal\"><span>Total no Pix <span class=\"pixoff\">"+pixOffPct()+"% OFF</span></span><span id=\"cart-total\">R$ 0,00</span></div>" +
       "<button class=\"btn block\" id=\"cart-checkout-btn\" onclick=\"openPixModal()\" disabled>Finalizar compra</button>" +
