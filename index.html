@@ -601,6 +601,27 @@ async function carregarConfigSite(){
   var pp = cfg("popup");
   if(pp){ if(pp.cupom) LEAD_CUPOM = String(pp.cupom).trim().toUpperCase(); if(Number(pp.pct) > 0) LEAD_PCT = Number(pp.pct); }
 }
+/* ================= SACOLA DA CLIENTE IDENTIFICADA (aparece no Painel do Site) =================
+   So grava quando a cliente ja deixou o WhatsApp (popup ou checkout). O site nunca le de volta. */
+var _carTimer = null, _carUltimo = "";
+function clienteSalvo(){ try{ return JSON.parse(localStorage.getItem("korpa_cliente")||"{}"); }catch(e){ return {}; } }
+function sincronizarCarrinho(origem, agora){
+  clearTimeout(_carTimer);
+  _carTimer = setTimeout(function(){
+    try{
+      var c = clienteSalvo(); var tel = String(c["pix-phone"]||"").replace(/[^0-9]/g,"");
+      if(tel.length < 10) return;
+      var lista = (typeof cart !== "undefined" && cart) ? cart : [];
+      var itens = lista.map(function(i){ return { id:i.id, nome:i.name, variacao:i.variation||"", img:i.image||"", qtd:i.qty, preco:i.unitPrice }; });
+      var assinatura = tel + JSON.stringify(itens);
+      if(assinatura === _carUltimo) return;
+      _carUltimo = assinatura;
+      var vid = null; try{ vid = localStorage.getItem("korpa_vid"); }catch(e){}
+      sb.rpc("salvar_carrinho", { p_whatsapp: tel, p_nome: c["pix-name"]||"", p_itens: itens, p_origem: origem||"", p_visitor: vid||"" }).then(function(){}, function(){});
+    }catch(e){}
+  }, agora ? 50 : 1500);
+}
+setTimeout(function(){ try{ if(typeof cart !== "undefined" && cart && cart.length) sincronizarCarrinho("visita"); }catch(e){} }, 5000);
 function popupDesligado(){ var p = cfg("popup"); return !!(p && p.ativo === false); }
 function popupTxt(campo, padrao){ var p = cfg("popup"); return (p && p[campo] && String(p[campo]).trim()) ? String(p[campo]).trim() : padrao; }
 function adbarItensHtml(){
@@ -1255,7 +1276,7 @@ var cart = [];
 try { cart = JSON.parse(localStorage.getItem("korpa_cart") || "[]"); } catch(e){ cart = []; }
 var selectedVariationIdx = null;
 
-function saveCart(){ localStorage.setItem("korpa_cart", JSON.stringify(cart)); }
+function saveCart(){ localStorage.setItem("korpa_cart", JSON.stringify(cart)); sincronizarCarrinho("sacola"); }
 function cartCount(){ return cart.reduce(function(s,i){ return s+i.qty; }, 0); }
 function cartTotal(){ return cart.reduce(function(s,i){ return s+i.qty*i.unitPrice; }, 0); }
 
@@ -1955,6 +1976,7 @@ function lerDadosCliente(){
   if(precisaEndereco && !d.address){ errEl.textContent = "Informe seu endereço (rua, número e bairro)."; return null; }
   if(!currentFreight){ errEl.textContent = "Calcule o frete antes de finalizar."; return null; }
   try{ localStorage.setItem("korpa_cliente", JSON.stringify({"pix-name":d.name,"pix-phone":d.phone,"pix-address":d.address,"pix-complement":d.complement})); }catch(e){}
+  sincronizarCarrinho("checkout", true);
   return d;
 }
 function submitCheckout(){
@@ -2345,6 +2367,7 @@ function enviarLead(){
       localStorage.setItem("korpa_lead_ok", "1");
     }catch(e){}
     esconderBotaoLead();
+    sincronizarCarrinho("popup", true);
     document.getElementById("lp-ola").textContent = "Prontinho, " + nome.split(" ")[0] + "! Seu cupom é:";
     document.getElementById("lp-form").style.display = "none";
     document.getElementById("lp-done").style.display = "";
