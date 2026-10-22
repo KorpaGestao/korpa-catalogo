@@ -1814,7 +1814,7 @@ function checkoutTotals(){
   var sub = round2(cartTotal() - kr.desconto);
   var foraDoKit = round2(cartTotal() - kr.bruto);
   var fr = (currentFreight && !currentFreight.combinarDireto) ? Number(currentFreight.value)||0 : 0;
-  var descPix = cupomAplicado ? round2(foraDoKit * cupomAplicado.pct/100) : 0;
+  var descPix = cupomDescontoSite(foraDoKit, sub);
   var desc = payMethod==="pix" ? descPix : 0;
   var base = round2(sub - desc + fr);
   var acresc = payMethod==="cartao" ? round2(base * CARD_FEE_PCT/100) : 0;
@@ -1834,7 +1834,8 @@ function renderCheckoutSummary(){
     (t.kit.desconto>0 ? "<div class=\"sumrow kitrow\" style=\"margin-top:8px\"><span>"+esc(kitResumoTexto(t.kit))+"</span><span>- "+brl(t.kit.desconto)+"</span></div>" : "") +
     (cupomAplicado && t.kit.desconto>0 ? "<div class=\"sumrow muted\" style=\"font-size:12.5px\"><span>O cupom não vale para as peças da promoção</span><span></span></div>" : "") +
     "<div class=\"sumrow\" style=\"margin-top:8px\"><span>Entrega: "+esc(f.nome)+(f.cidade?(" · "+esc(f.cidade)+"/"+esc(f.uf)):"")+"</span><span>"+(f.combinarDireto?"A combinar":(f.value>0?brl(f.value):"Grátis"))+"</span></div>" +
-    (t.desc>0 ? "<div class=\"sumrow\" style=\"color:#2e7d4f\"><span>Cupom "+esc(cupomAplicado.codigo)+" (-"+cupomAplicado.pct+"%)</span><span>- "+brl(t.desc)+"</span></div>" : "") +
+    (t.desc>0 ? "<div class=\"sumrow\" style=\"color:#2e7d4f\"><span>Cupom "+esc(cupomAplicado.codigo)+" (-"+cupomRotulo()+")</span><span>- "+brl(t.desc)+"</span></div>" : "") +
+    (cupomAplicado && payMethod==="pix" && t.desc===0 && cupomAvisoSite ? "<div class='sumrow muted' style='font-size:12.5px'><span>"+esc(cupomAvisoSite)+"</span><span></span></div>" : "") +
     (cupomAplicado && payMethod==="cartao" ? "<div class=\"sumrow muted\" style=\"font-size:12.5px\"><span>O cupom "+esc(cupomAplicado.codigo)+" vale para pagamento no Pix</span><span></span></div>" : "") +
     (t.acresc>0 ? "<div class=\"sumrow\"><span>Diferença do cartão</span><span>"+brl(t.acresc)+"</span></div>" : "") +
     "<div class=\"sumrow total\"><span>Total"+(payMethod==="cartao"?" no cartão":" no Pix")+"</span><span id=\"pix-total-value\">"+brl(t.total)+(f.combinarDireto?" + frete":"")+"</span></div>";
@@ -2086,6 +2087,22 @@ function cupomEditado(){
   }
 }
 function setCupomMsg(txt, cls){ var m = document.getElementById("coupon-msg"); if(m){ m.textContent = txt; m.className = "coupon-msg" + (cls ? " " + cls : ""); } }
+/* Desconto do cupom na tela (o valor que vale de verdade e calculado no servidor, criar-pedido) */
+var cupomAvisoSite = "";
+function cupomRotulo(){ if(!cupomAplicado) return ""; return cupomAplicado.tipo==="valor" ? brl(cupomAplicado.valor) : (cupomAplicado.pct+"%"); }
+function cupomDescontoSite(foraDoKit, subtotal){
+  cupomAvisoSite = "";
+  if(!cupomAplicado) return 0;
+  var base = foraDoKit;
+  if(!cupomAplicado.valeComPromo){
+    var emPromo = cart.reduce(function(s2,i){ var pr = products.find(function(x){ return x.id===i.id; }); return s2 + ((pr && pr.promo_price && !pr.promo_kit) ? i.unitPrice*i.qty : 0); }, 0);
+    base = round2(Math.max(0, base - emPromo));
+  }
+  if(cupomAplicado.minCompra>0 && subtotal < cupomAplicado.minCompra){ cupomAvisoSite = "O cupom "+cupomAplicado.codigo+" vale para compras a partir de "+brl(cupomAplicado.minCompra); return 0; }
+  if(!(base>0)){ cupomAvisoSite = "O cupom "+cupomAplicado.codigo+" não vale para peças em promoção"; return 0; }
+  if(cupomAplicado.tipo==="valor") return round2(Math.min(cupomAplicado.valor, base));
+  return round2(base * cupomAplicado.pct/100);
+}
 function aplicarCupom(silencioso){
   var el = document.getElementById("pix-coupon");
   var codigo = el ? el.value.trim().toUpperCase() : "";
@@ -2096,8 +2113,8 @@ function aplicarCupom(silencioso){
   sb.functions.invoke("validar-cupom", { body: { codigo: codigo, telefone: tel } }).then(function(res){
     var d = res && res.data;
     if(d && d.valid){
-      cupomAplicado = { codigo: codigo, pct: Number(d.descontoPct) || 0 };
-      setCupomMsg("Cupom aplicado! " + cupomAplicado.pct + "% de desconto nas peças no pagamento via Pix 💕" + (cartKit().desconto>0 ? " O cupom não vale para as peças da promoção Leve 2 (não é cumulativo)." : ""), "ok");
+      cupomAplicado = { codigo: codigo, pct: Number(d.descontoPct) || 0, tipo: d.tipo || "pct", valor: Number(d.valor) || Number(d.descontoPct) || 0, minCompra: Number(d.minCompra) || 0, valeComPromo: d.valeComPromocao !== false };
+      setCupomMsg("Cupom aplicado! " + cupomRotulo() + " de desconto nas peças no pagamento via Pix 💕" + (cupomAplicado.minCompra>0 ? " (compras a partir de " + brl(cupomAplicado.minCompra) + ")" : "") + (!cupomAplicado.valeComPromo ? " Não vale para peças em promoção." : "") + (cartKit().desconto>0 ? " O cupom não vale para as peças da promoção Leve 2 (não é cumulativo)." : ""), "ok");
     } else {
       cupomAplicado = null;
       setCupomMsg((d && d.message) || "Não foi possível validar o cupom agora.", "bad");
