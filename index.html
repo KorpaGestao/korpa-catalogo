@@ -521,7 +521,9 @@ return list.find(function(x){ return x.id===id; }) || null;
 }
 
 async function loadProducts(){
+  var _cfgP = carregarConfigSite();
   var res = await sb.from("catalog_products").select("*").order("created_at", {ascending:false});
+  await _cfgP;
   if(res.error){
     document.getElementById("app").innerHTML = "<div class=\"wrap\"><p>Não foi possível carregar a loja agora. Tente novamente em instantes.</p></div>";
     console.error(res.error);
@@ -540,6 +542,8 @@ function route(isRefresh){
   var hash = window.location.hash || "#home";
   if(hash.indexOf("#produto/") === 0){
     renderProductPage(hash.replace("#produto/",""));
+  } else if(hash.indexOf("#pagina/") === 0){
+    renderPagina(decodeURIComponent(hash.replace("#pagina/","")));
   } else if(hash.indexOf("#categoria/") === 0){
     renderHome(decodeURIComponent(hash.replace("#categoria/","")));
   } else {
@@ -580,6 +584,91 @@ var homeOnlyAvail = false;
 var heroIndex = 0;
 var heroTimer = null;
 
+/* ================= CONFIGURACOES DO PAINEL DO SITE (tabela site_config) =================
+   Tudo aqui e opcional: se o painel nao tiver nada salvo, o site fica exatamente como antes. */
+var SITE_CFG = {};
+function cfg(chave){ return (SITE_CFG && SITE_CFG[chave]) || null; }
+async function carregarConfigSite(){
+  try{
+    var r = await sb.from("site_config").select("chave,valor");
+    if(!r.error && r.data){ var o = {}; r.data.forEach(function(x){ o[x.chave] = x.valor; }); SITE_CFG = o; }
+  }catch(e){}
+  var c = cfg("contato");
+  if(c){
+    if(c.whatsapp && String(c.whatsapp).replace(/[^0-9]/g,"").length >= 10){ var w = String(c.whatsapp).replace(/[^0-9]/g,""); WHATSAPP_NUMBER = w.length <= 11 ? "55"+w : w; }
+    if(c.instagram) INSTAGRAM_USER = String(c.instagram).replace(/^@/,"").trim() || INSTAGRAM_USER;
+  }
+  var pp = cfg("popup");
+  if(pp){ if(pp.cupom) LEAD_CUPOM = String(pp.cupom).trim().toUpperCase(); if(Number(pp.pct) > 0) LEAD_PCT = Number(pp.pct); }
+}
+function popupDesligado(){ var p = cfg("popup"); return !!(p && p.ativo === false); }
+function popupTxt(campo, padrao){ var p = cfg("popup"); return (p && p[campo] && String(p[campo]).trim()) ? String(p[campo]).trim() : padrao; }
+function adbarItensHtml(){
+  var a = cfg("avisos");
+  var itens = (a && Array.isArray(a.itens) && a.itens.length) ? a.itens : [
+    {icone:"truck", texto:"Entrega em todo o Brasil"},
+    {icone:"pin", texto:"Entrega própria em Fortaleza e região"},
+    {icone:"chat", texto:"Atendimento pelo WhatsApp"}];
+  return itens.filter(function(i){ return i && i.texto; }).map(function(i){ return "<span class='adbar-item'>"+(ICON[i.icone]||"")+esc(i.texto)+"</span>"; }).join("");
+}
+function bannersAtivos(){
+  var b = cfg("banners"), lst = (b && Array.isArray(b.itens)) ? b.itens : [], agora = Date.now();
+  return lst.filter(function(x){ return x && x.img && x.ativo !== false && (!x.inicio || Date.parse(x.inicio) <= agora) && (!x.fim || Date.parse(x.fim) > agora); });
+}
+function bannersHtml(){
+  var lst = bannersAtivos(); if(!lst.length) return "";
+  return heroHtml(lst.map(function(x){ return { title: x.titulo||"", eyebrow: x.chamada||"", desc: x.texto||"", img: x.img, href: x.link||"#home" }; }));
+}
+function perksHtml(){
+  return "<div class='perks perks-bottom' style='border-top:1px solid var(--line)'><div class='wrap'><div class='perks-row'>" +
+    "<div class='perk'>"+ICON.truck+"<div><b>Enviamos pra todo o Brasil</b><span>Frete calculado na hora pelo CEP</span></div></div>" +
+    "<div class='perk'>"+ICON.pin+"<div><b>Entrega própria</b><span>Fortaleza e região metropolitana</span></div></div>" +
+    "<div class='perk'>"+ICON.chat+"<div><b>Atendimento no WhatsApp</b><span>Tira dúvidas de tamanho e cor</span></div></div>" +
+  "</div></div></div>";
+}
+function secTitulo(id, padrao){ var h = cfg("home"); var s = h && Array.isArray(h.secoes) ? h.secoes.find(function(x){ return x && x.id===id; }) : null; return (s && s.titulo && String(s.titulo).trim()) ? String(s.titulo).trim() : padrao; }
+function ordemSecoes(semDestaques){
+  var h = cfg("home");
+  if(h && Array.isArray(h.secoes) && h.secoes.length){
+    var ids = h.secoes.filter(function(x){ return x && x.id && x.ativo !== false; }).map(function(x){ return x.id; });
+    if(ids.indexOf("todos") < 0) ids.push("todos");
+    return ids;
+  }
+  return ["banners","categorias","destaques","promocoes"].concat(semDestaques ? ["lancamentos"] : []).concat(["vantagens","todos"]);
+}
+function ordenarCategorias(cats){
+  var c = cfg("categorias"); if(!c) return cats;
+  var ocultas = (c.ocultas||[]).map(function(x){ return String(x).toLowerCase(); });
+  var ordem = (c.ordem||[]).map(function(x){ return String(x).toLowerCase(); });
+  var out = cats.filter(function(x){ return ocultas.indexOf(String(x).toLowerCase()) < 0; });
+  return out.map(function(x,i){ return {c:x, i:i}; }).sort(function(a,b){
+    var ia = ordem.indexOf(String(a.c).toLowerCase()), ib = ordem.indexOf(String(b.c).toLowerCase());
+    if(ia < 0) ia = 1000 + a.i; if(ib < 0) ib = 1000 + b.i; return ia - ib;
+  }).map(function(x){ return x.c; });
+}
+function seloBadge(p){
+  var s = p.selos || [];
+  if(s.indexOf("lancamento") > -1) return "<span class='badge kit'>Lançamento</span>";
+  if(s.indexOf("mais_vendido") > -1) return "<span class='badge kit'>Mais vendido</span>";
+  return "";
+}
+var PAGINAS = { sobre:"Sobre a KORPA", trocas:"Trocas e devoluções", entrega:"Entrega e frete", faq:"Perguntas frequentes" };
+function textoPagina(k){ var t = cfg("textos"); return (t && t[k]) ? String(t[k]) : ""; }
+function institucionalHtml(){
+  var ks = Object.keys(PAGINAS).filter(function(k){ return textoPagina(k).trim(); });
+  if(!ks.length) return "";
+  return "<div><h4>Institucional</h4>" + ks.map(function(k){ return "<a href='#pagina/"+k+"'>"+esc(PAGINAS[k])+"</a>"; }).join("") + "</div>";
+}
+function renderPagina(k){
+  var titulo = PAGINAS[k] || "Página", txt = textoPagina(k);
+  document.title = titulo + " · KORPA";
+  var corpo = txt.trim() ? txt.split(String.fromCharCode(10)).map(function(l){ l = l.trim(); if(!l) return ""; return /[?]$/.test(l) ? "<p style='margin:18px 0 4px'><b>"+esc(l)+"</b></p>" : "<p style='margin:0 0 10px'>"+esc(l)+"</p>"; }).join("") : "<p class='muted'>Em breve.</p>";
+  document.getElementById("app").innerHTML = headerHtml("pagina") +
+    "<div class='wrap'><div class='crumbs'><a onclick='goHome()'>Início</a> &gt; "+esc(titulo)+"</div>" +
+    "<section class='section' style='padding-top:12px;max-width:760px'><div class='section-head'><h2>"+esc(titulo)+"</h2></div>" +
+    "<div style='font-size:15px;line-height:1.7'>"+corpo+"</div></section></div>" + renderFooter();
+}
+
 function logoHtml(){
   return "<div class=\"logo\" onclick=\"goHome()\"><span class=\"logo-word\">KORPA</span><span class=\"logo-sub\">Moda Fitness Feminina</span></div>";
 }
@@ -595,7 +684,7 @@ function allCategories(){
   buildDisplayProducts().forEach(function(p){ if(p.category && cats.indexOf(p.category)===-1) cats.push(p.category); });
   cats.sort(function(a,b){ return a.localeCompare(b,"pt-BR"); });
   FABRIC_CATS.forEach(function(f){ if(cats.indexOf(f)===-1 && countInCategory(f)>0) cats.push(f); });
-  return cats;
+  return ordenarCategorias(cats);
 }
 var FABRIC_CATS = ["Poliamida","Suplex"]; /* categorias por tecido (lidas da descrição), sempre por último */
 function fabricOf(p){ var t=((p.specs||"")+" "+(p.description||"")).toLowerCase(); if(t.indexOf("poliamida")>-1) return "Poliamida"; if(t.indexOf("suplex")>-1) return "Suplex"; return null; }
@@ -609,9 +698,7 @@ function headerHtml(activeKey){
   }).join("");
   var currentSearch = document.getElementById("search-input") ? document.getElementById("search-input").value : "";
   return "<div class=\"adbar\"><div class=\"adbar-track\">" +
-      "<span class=\"adbar-item\">"+ICON.truck+"Entrega em todo o Brasil</span>" +
-      "<span class=\"adbar-item\">"+ICON.pin+"Entrega própria em Fortaleza e região</span>" +
-      "<span class=\"adbar-item\">"+ICON.chat+"Atendimento pelo WhatsApp</span>" +
+      adbarItensHtml() +
     "</div></div>" +
     "<header class=\"header\"><div class=\"wrap\">" +
       "<div class=\"header-row\">" +
@@ -684,7 +771,7 @@ function renderFooter(){
     "<div><h4>Atendimento</h4>" +
       (WHATSAPP_NUMBER ? "<a onclick=\"contactHelpWhatsapp()\">WhatsApp</a>" : "") +
       "<a href=\"https://instagram.com/"+INSTAGRAM_USER+"\" target=\"_blank\" rel=\"noopener\">Instagram @"+INSTAGRAM_USER+"</a></div>" +
-    "<div><h4>Entrega</h4><p>Entrega própria em Fortaleza e região metropolitana</p><p>Enviamos para todo o Brasil</p></div>" +
+    institucionalHtml() + "<div><h4>Entrega</h4><p>Entrega própria em Fortaleza e região metropolitana</p><p>Enviamos para todo o Brasil</p></div>" +
     "<div><h4>Categorias</h4>" + allCategories().slice(0,6).map(function(c){ return "<a onclick=\"window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\">"+esc(c)+"</a>"; }).join("") + "</div>" +
   "</div></div><div class=\"footer-bottom\">© "+new Date().getFullYear()+" KORPA Moda Fitness Feminina · Todos os direitos reservados</div></footer>";
 }
@@ -834,7 +921,7 @@ function productCardHtml(p){
   var warn = p.in_stock ? stockWarnText(stock) : "";
   var badge = !p.in_stock ? "<span class=\"badge oos\">Esgotado</span>" :
     (p.promo_price ? "<span class=\"badge promo\">-"+Math.round((1-Number(p.promo_price)/Number(p.price||p.promo_price))*100)+"%</span>" :
-     (productKit(p) ? "<span class=\"badge kit\">"+esc(kitTexto(productKit(p)))+"</span>" : ""));
+     (productKit(p) ? "<span class=\"badge kit\">"+esc(kitTexto(productKit(p)))+"</span>" : seloBadge(p)));
   var safeName = esc(p.name).replace(/'/g,"");
   return "<a class=\"pcard\" href=\""+routeId(p)+"\">" +
     "<div class=\"imgwrap\">" +
@@ -999,28 +1086,28 @@ function renderHome(categoryFilter){
   featured = featured.slice().sort(function(a,b){ var ia=FEATURED_ORDER.indexOf(a.name), ib=FEATURED_ORDER.indexOf(b.name); if(ia<0) ia=999; if(ib<0) ib=999; return ia-ib; });
   var promos = displayList.filter(function(p){ return p.promo_price && p.in_stock; });
   var newest = displayList.filter(function(p){ return p.in_stock; }).slice(0,12);
+  var lancSelo = displayList.filter(function(p){ return p.in_stock && (p.selos||[]).indexOf("lancamento") > -1; });
+  if(lancSelo.length) newest = lancSelo.slice(0,12);
 
   var cats = allCategories();
   var catsHtml = cats.length ? ("<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\" style=\"justify-content:center\"><h2>Compre por categoria</h2></div><div class=\"cats\">" +
     cats.map(function(c){
-      var CAT_COVER = { "Shorts Duplos": "Short Duplo Uniforme", "Casacos": "Casaco Importado", "Blusas": "Blusa Virginia" }; /* capa fixa da categoria (id do produto) */
+      var CAT_COVER = { "Shorts Duplos": "Short Duplo Uniforme", "Casacos": "Casaco Importado", "Blusas": "Blusa Virginia" }; CAT_COVER = Object.assign({}, CAT_COVER, (cfg("categorias")||{}).capas||{}); /* capa fixa da categoria (id do produto) */
       var p = (CAT_COVER[c] && displayList.find(function(x){ return String(x.name||"").trim().toLowerCase() === CAT_COVER[c].toLowerCase() && x.images && x.images[0]; })) || displayList.find(function(x){ return inCategory(x,c) && x.images && x.images[0]; });
       return "<div class=\"cat\" onclick=\"window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\"><div class=\"cat-img\">"+(p?"<img src=\""+esc(p.images[0])+"\" alt=\"\" loading=\"lazy\">":esc(c.charAt(0)))+"</div><div class=\"cat-name\">"+esc(c)+"</div></div>";
     }).join("") + "</div></div></section>") : "";
 
-  body = /* banner grande removido a pedido da loja */
-    catsHtml +
-    (featured.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Destaques</h2></div>"+railHtml("rail-featured", featured)+"</div></section>" : "") +
-    (promos.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Promoções</h2></div>"+railHtml("rail-promo", promos)+"</div></section>" : "") +
-    (!featured.length && newest.length ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>Lançamentos</h2><button class=\"linkbtn\" onclick=\"scrollToAll()\">Ver todos</button></div>"+railHtml("rail-new", newest)+"</div></section>" : "") +
-    "<div class=\"perks perks-bottom\" style=\"border-top:1px solid var(--line)\"><div class=\"wrap\"><div class=\"perks-row\">" +
-      "<div class=\"perk\">"+ICON.truck+"<div><b>Enviamos pra todo o Brasil</b><span>Frete calculado na hora pelo CEP</span></div></div>" +
-      "<div class=\"perk\">"+ICON.pin+"<div><b>Entrega própria</b><span>Fortaleza e região metropolitana</span></div></div>" +
-      "<div class=\"perk\">"+ICON.chat+"<div><b>Atendimento no WhatsApp</b><span>Tira dúvidas de tamanho e cor</span></div></div>" +
-    "</div></div></div>" +
-    "<section class=\"section\" id=\"todos\"><div class=\"wrap\"><div class=\"section-head\"><h2>Todos os produtos</h2></div>" +
-      toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto disponível no momento.") +
-    "</div></section>";
+  var SEC = {
+    banners: bannersHtml(),
+    categorias: catsHtml,
+    destaques: (featured.length ? "<section class='section'><div class='wrap'><div class='section-head'><h2>"+esc(secTitulo("destaques","Destaques"))+"</h2></div>"+railHtml("rail-featured", featured)+"</div></section>" : ""),
+    promocoes: (promos.length ? "<section class='section'><div class='wrap'><div class='section-head'><h2>"+esc(secTitulo("promocoes","Promoções"))+"</h2></div>"+railHtml("rail-promo", promos)+"</div></section>" : ""),
+    lancamentos: (newest.length ? "<section class='section'><div class='wrap'><div class='section-head'><h2>"+esc(secTitulo("lancamentos","Lançamentos"))+"</h2><button class='linkbtn' onclick='scrollToAll()'>Ver todos</button></div>"+railHtml("rail-new", newest)+"</div></section>" : ""),
+    vantagens: perksHtml(),
+    todos: "<section class='section' id='todos'><div class='wrap'><div class='section-head'><h2>Todos os produtos</h2></div>" + toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto disponível no momento.") + "</div></section>"
+  };
+  body = ordemSecoes(!featured.length).map(function(k){ return SEC[k] || ""; }).join("");
+  setTimeout(function(){ if(document.getElementById("hero")){ startHeroTimer(); enableHeroSwipe(); } }, 0);
 
   document.getElementById("app").innerHTML = top + body + renderFooter();
 }
@@ -2192,6 +2279,7 @@ function leadJaVisto(){ return leadCadastrado() || leadFechadoNestaVisita(); }
 function marcarLeadVisto(){}
 function mostrarBotaoLead(){
   if(leadCadastrado()) return;
+  if(popupDesligado()) return;
   if(!document.getElementById("lead-tab")){
     document.body.insertAdjacentHTML("beforeend", "<button class=\"lead-tab\" id=\"lead-tab\" onclick=\"abrirPopupLead(true)\" aria-label=\"Ganhe 5% de desconto\">🎁 "+LEAD_PCT+"% OFF</button>");
   }
@@ -2204,15 +2292,15 @@ function montarPopupLead(){
     "<div class=\"lead-ov\" id=\"lead-ov\" onclick=\"fecharPopupLead()\"></div>" +
     "<div class=\"lead-pop\" id=\"lead-pop\" role=\"dialog\" aria-label=\"Ganhe desconto\">" +
       "<div class=\"lp-top\"><button class=\"lp-x\" onclick=\"fecharPopupLead()\" aria-label=\"Fechar\">&times;</button>" +
-        "<div class=\"lp-kicker\">Presente de boas-vindas</div>" +
+        "<div class=\"lp-kicker\">"+esc(popupTxt("titulo","Presente de boas-vindas"))+"</div>" +
         "<div class=\"lp-big\">"+LEAD_PCT+"<small>%</small> OFF</div>" +
-        "<div class=\"lp-sub\">na sua primeira compra pagando no Pix 💕</div></div>" +
+        "<div class=\"lp-sub\">"+esc(popupTxt("subtitulo","na sua primeira compra pagando no Pix 💕"))+"</div></div>" +
       "<div class=\"lp-body\" id=\"lp-form\">" +
         "<div class=\"field\"><label>Seu nome</label><input id=\"lp-nome\" type=\"text\" autocomplete=\"name\" placeholder=\"Como podemos te chamar?\"></div>" +
         "<div class=\"field\"><label>WhatsApp (com DDD)</label><input id=\"lp-whats\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel\" placeholder=\"85999999999\" maxlength=\"15\" onkeydown=\"if(event.key==='Enter')enviarLead()\"></div>" +
         "<button class=\"btn block\" id=\"lp-btn\" onclick=\"enviarLead()\">Quero meu cupom</button>" +
         "<div class=\"lp-err\" id=\"lp-err\"></div>" +
-        "<div class=\"lp-fine\">Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. Não é cumulativo com promoções (ex.: Leve 2 por R$ 70). A gente só usa seu contato pra te mandar novidades da KORPA.</div>" +
+        "<div class=\"lp-fine\">"+esc(popupTxt("aviso","Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. Não é cumulativo com promoções (ex.: Leve 2 por R$ 70). A gente só usa seu contato pra te mandar novidades da KORPA."))+"</div>" +
       "</div>" +
       "<div class=\"lp-body\" id=\"lp-done\" style=\"display:none\">" +
         "<p style=\"text-align:center;margin:0 0 4px\" id=\"lp-ola\"></p>" +
@@ -2224,6 +2312,7 @@ function montarPopupLead(){
 }
 function abrirPopupLead(forcar){
   if(leadCadastrado()) return;
+  if(popupDesligado()) return;
   if(!forcar && leadFechadoNestaVisita()) return;
   var pm = document.getElementById("pix-modal");
   if(pm && pm.classList.contains("open")) return; // nao atrapalha quem ja esta finalizando
