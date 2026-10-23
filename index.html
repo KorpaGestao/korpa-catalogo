@@ -1077,7 +1077,7 @@ function renderHome(categoryFilter){
 
   if(searchTerm){
     var results = sortList(displayList.filter(function(p){
-      return normSearch([p.name,p.category,p.brand,productColors(p,false).join(" ")].join(" ")).indexOf(searchTerm)>-1;
+      return buscaPorCodigo(p, searchTerm) || normSearch([p.name,p.category,p.brand,productColors(p,false).join(" ")].join(" ")).indexOf(searchTerm)>-1;
     }));
     body = "<div class=\"wrap\"><section class=\"section\"><div class=\"section-head\"><h2>Resultados para “"+esc(rawSearch.trim())+"”</h2><button class=\"linkbtn\" onclick=\"closeSearch()\">Limpar busca</button></div>" +
       toolbarHtml(null) + gridOrEmpty(results, "Nenhum produto encontrado. Tente outra palavra 💕") + "</section></div>";
@@ -1133,6 +1133,20 @@ function renderHome(categoryFilter){
   document.getElementById("app").innerHTML = top + body + renderFooter();
 }
 function normSearch(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
+
+/* Busca pelo codigo do produto (out/2026). O codigo (ex.: KP-0041) NAO aparece no site,
+   so serve pra cliente achar a peca: "0041", "41", "kp0041" ou "KP-0041" encontram a mesma.
+   Compara o numero exato (41 nao acha a 0410). Produto agrupado vale o codigo de qualquer membro. */
+function numeroCodigo(s){
+  var m = String(s||"").toLowerCase().replace(/\s+/g,"").match(/^(?:kp)?-?0*(\d+)$/);
+  return m ? m[1] : null;
+}
+function buscaPorCodigo(p, termo){
+  var alvo = numeroCodigo(termo); if(!alvo) return false;
+  var codigos = [p.code];
+  if(p._members) p._members.forEach(function(mid){ var m = products.find(function(x){ return x.id===mid; }); if(m) codigos.push(m.code); });
+  return codigos.some(function(c){ return c && numeroCodigo(c) === alvo; });
+}
 
 var searchDebounce = null;
 function onSearchInput(val){
@@ -2090,6 +2104,12 @@ function enviarMensagemPedidoWhatsapp(d, pedidoId, janela){
   var lines = cart.map(function(i){ return "• "+i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+" - "+brl(i.unitPrice*i.qty); });
   var freightText = currentFreight.combinarDireto ? "A combinar" : (t.fr>0 ? brl(t.fr) : "Grátis");
   var cartao = payMethod==="cartao";
+  // codigo de cada peca na mensagem que chega pra loja (no site ele continua escondido)
+  lines = cart.map(function(i){
+    var prod = products.find(function(x){ return x.id===i.id; });
+    var cod = prod && prod.code ? (" · " + prod.code) : "";
+    return "• "+i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+cod+" - "+brl(i.unitPrice*i.qty);
+  });
   var msg = "Olá! Gostaria de finalizar este pedido pelo site:" + (pedidoId ? ("\nPedido #" + String(pedidoId).slice(0,8)) : "") + "\n\n" + lines.join("\n") +
     (t.kit.desconto>0 ? ("\n\n" + kitResumoTexto(t.kit) + ": - " + brl(t.kit.desconto)) : "") +
     "\n\nSubtotal: " + brl(t.sub) +
