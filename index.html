@@ -764,11 +764,18 @@ function allCategories(){
   buildDisplayProducts().forEach(function(p){ if(p.category && cats.indexOf(p.category)===-1) cats.push(p.category); });
   cats.sort(function(a,b){ return a.localeCompare(b,"pt-BR"); });
   FABRIC_CATS.forEach(function(f){ if(cats.indexOf(f)===-1 && countInCategory(f)>0) cats.push(f); });
-  return ordenarCategorias(cats);
+  cats = cats.filter(function(c){ return c !== PRAIA_CAT; });
+  cats = ordenarCategorias(cats);
+  if(countInCategory(PRAIA_CAT) > 0) cats.push(PRAIA_CAT);
+  return cats;
 }
 var FABRIC_CATS = ["Poliamida","Suplex"]; /* categorias por tecido (lidas da descrição), sempre por último */
 function fabricOf(p){ var t=((p.specs||"")+" "+(p.description||"")).toLowerCase(); if(t.indexOf("poliamida")>-1) return "Poliamida"; if(t.indexOf("suplex")>-1) return "Suplex"; return null; }
-function inCategory(p,c){ return FABRIC_CATS.indexOf(c)>-1 ? fabricOf(p)===c : p.category===c; }
+var PRAIA_CAT = "Moda Praia"; /* categoria de praia (out/2026): categoria "Moda Praia" ou selo moda_praia, sempre por ultimo */
+function inCategory(p,c){
+  if(c === PRAIA_CAT) return p.category === PRAIA_CAT || (p.selos||[]).indexOf("moda_praia") > -1;
+  return FABRIC_CATS.indexOf(c)>-1 ? fabricOf(p)===c : p.category===c;
+}
 function countInCategory(c){ return buildDisplayProducts().filter(function(p){ return inCategory(p,c); }).length; }
 
 function headerHtml(activeKey){
@@ -1193,9 +1200,13 @@ function renderHome(categoryFilter){
     vantagens: perksHtml(),
     todos: "<section class='section' id='todos'><div class='wrap'><div class='section-head'><h2>Todos os produtos</h2></div>" + toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto disponível no momento.") + "</div></section>"
   };
+  var viagens = displayList.filter(function(p){ return p.in_stock && (p.selos||[]).indexOf("viagens_on") > -1; });
+  SEC.viagens = viagens.length ? "<section class='section'><div class='wrap'><div class='section-head'><h2>"+esc(secTitulo("viagens","Viagens On"))+" ✈️</h2></div>"+railHtml("rail-viagens", viagens)+"</div></section>" : "";
   var _camp = promoCampanha();
   if(_camp){ SEC.promocoes = ""; }
-  body = (_camp ? promoHeroHtml(_camp, true) : "") + ordemSecoes(!featured.length).map(function(k){ return SEC[k] || ""; }).join("");
+  var _ordem = ordemSecoes(!featured.length);
+  if(_ordem.indexOf("viagens") < 0){ var _iD = _ordem.indexOf("destaques"); _ordem.splice(_iD > -1 ? _iD + 1 : 0, 0, "viagens"); }
+  body = (_camp ? promoHeroHtml(_camp, true) : "") + _ordem.map(function(k){ return SEC[k] || ""; }).join("");
   setTimeout(function(){ if(document.getElementById("hero")){ startHeroTimer(); enableHeroSwipe(); } }, 0);
 
   document.getElementById("app").innerHTML = top + body + renderFooter();
