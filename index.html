@@ -1019,7 +1019,7 @@ function productCardHtml(p){
     (promoEmBreve(p) ? "<div class=\"pteaser\">"+esc(promoTeaserTexto(p))+"</div>" : "") +
     (warn ? "<div class=\"stockwarn\">"+warn+"</div>" : "") +
     (p.in_stock && promoEmBreve(p) && cardComAviso ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();abrirAvisoPromo('"+esc(p.id)+"')\">🔔 Me avisa</button>" :
-     p.sob_encomenda ? "<span class=\"btn sm\">Encomendar</span>" :
+     p.sob_encomenda ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();encomendarWhatsapp('"+esc(p.id)+"')\">Comprar</button>" :
      p.in_stock ? "<span class=\"btn sm\">Comprar</span>"
       : "<button class=\"btn sm ghost\" onclick=\"event.preventDefault();event.stopPropagation();openAviseModal('"+esc(p.id)+"','"+safeName+"')\">Avise-me</button>") +
   "</a>";
@@ -1311,11 +1311,14 @@ function encEscolha(p){
   return (tam ? "o tamanho e " : "") + (frase ? "a cor e a frase" : "a cor");
 }
 function ehBiquini(p){ var t = normSearch((p.category||"")+" "+(p.name||"")); return t.indexOf("biquini") > -1; }
-function encomendarWhatsapp(){
-  var p = currentProduct(); if(!p) return;
-  var v = (selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
+function encomendarWhatsapp(pid){
+  var p = pid ? findProductForRoute(pid) : currentProduct(); if(!p) return;
+  var v = (!pid && selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
   var op = v ? [v.color, (v.size && optKey(v.size)!=="unico") ? "tam. "+v.size : ""].filter(Boolean).join(" · ") : "";
-  var msg = "Oi! Quero encomendar: " + p.name + (op ? " (" + op + ")" : "") + " 💕 Tem disponível? Qual o prazo?\n" + window.location.href;
+  var link = window.location.href.split("#")[0] + routeId(p);
+  var msg = op
+    ? "Oi! Quero comprar: " + p.name + " (" + op + ") 💕 Tem disponível? Qual o prazo?\n" + link
+    : "Oi! Quero comprar: " + p.name + " 💕 Quais " + (encEscolha(p).indexOf("frase") > -1 ? "cores e frases" : (productSizes(p).length > 1 ? "tamanhos e cores" : "cores")) + " vocês têm disponíveis?\n" + link;
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
 }
 function contactWhatsapp(productName){
@@ -1503,7 +1506,7 @@ function selectVariation(idx){
   refreshVariationUI(p);
 }
 function detailStockHtml(p){
-  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Escolha "+encEscolha(p)+" e chame a gente no WhatsApp: a gente confirma a disponibilidade e o prazo antes de você pagar 💕</div>";
+  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Toca em comprar e fala com a gente no WhatsApp: a gente te mostra "+(encEscolha(p).indexOf("frase") > -1 ? "as cores e frases" : (productSizes(p).length > 1 ? "os tamanhos e cores" : "as cores"))+" disponíveis e o prazo antes de você pagar 💕</div>";
   if(!p.in_stock) return "<div class=\"p-stock\">Produto esgotado no momento</div>";
   if(selectedVariationIdx!=null){
     var v = p.variations[selectedVariationIdx];
@@ -1517,9 +1520,7 @@ function detailStockHtml(p){
 function detailActionsHtml(p, idx){
   if(p.sob_encomenda){
     var ve = (p.variations && idx!=null) ? p.variations[idx] : null;
-    return "<div class=\"buyrow\">" + (ve
-      ? "<button class=\"btn wa\" onclick=\"encomendarWhatsapp()\">"+ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Encomendar pelo WhatsApp</button>"
-      : "<button class=\"btn\" disabled>Escolha "+encEscolha(p)+"</button>") + "</div>";
+    return "<div class=\"buyrow\"><button class=\"btn wa\" onclick=\"encomendarWhatsapp()\">"+ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Comprar pelo WhatsApp</button></div>";
   }
   var hasVariations = p.variations && p.variations.length;
   var v = (hasVariations && idx!=null) ? p.variations[idx] : null;
