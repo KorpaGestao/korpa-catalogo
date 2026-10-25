@@ -456,6 +456,9 @@ html.ver-todos #todos{display:block;}
 .nav>a.navpromo{color:var(--pink-dark);font-weight:700;}
 .side-links a.navpromo{color:var(--pink-dark);font-weight:700;}
 .badge.soon{background:var(--ink);color:#fff;}
+.badge.enc{background:#fff;color:var(--pink-dark);border:1px solid var(--pink-dark);font-weight:700;}
+.enc-note{border:1px dashed var(--pink);background:var(--pink-soft);padding:12px 14px;font-size:14px;line-height:1.5;margin:10px 0 4px;color:var(--ink);}
+.enc-note b{color:var(--pink-dark);}
 .pteaser{font-size:12.5px;color:var(--pink-dark);font-weight:700;margin-top:3px;}
 .promo-box{border:1px solid var(--pink-line);background:var(--pink-soft);padding:14px 16px;margin:14px 0 6px;}
 .promo-box .pb-t{font-size:14.5px;color:var(--ink);line-height:1.4;}
@@ -1001,6 +1004,7 @@ function productCardHtml(p){
   var badge = !p.in_stock ? "<span class=\"badge oos\">Esgotado</span>" :
     (p.promo_price ? (pctOff(precoCheio(p,null), p.promo_price) > 0 ? "<span class=\"badge promo\">-"+pctOff(precoCheio(p,null), p.promo_price)+"%</span>" : "<span class=\"badge promo\">Promo</span>") :
      promoEmBreve(p) ? "<span class=\"badge soon\">"+esc(promoBadgeEmBreve(p))+"</span>" :
+     p.sob_encomenda ? "<span class=\"badge enc\">Sob encomenda</span>" :
      (productKit(p) ? "<span class=\"badge kit\">"+esc(kitTexto(productKit(p)))+"</span>" : seloBadge(p)));
   var safeName = esc(p.name).replace(/'/g,"");
   return "<a class=\"pcard\" href=\""+routeId(p)+"\">" +
@@ -1015,6 +1019,7 @@ function productCardHtml(p){
     (promoEmBreve(p) ? "<div class=\"pteaser\">"+esc(promoTeaserTexto(p))+"</div>" : "") +
     (warn ? "<div class=\"stockwarn\">"+warn+"</div>" : "") +
     (p.in_stock && promoEmBreve(p) && cardComAviso ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();abrirAvisoPromo('"+esc(p.id)+"')\">🔔 Me avisa</button>" :
+     p.sob_encomenda ? "<span class=\"btn sm\">Encomendar</span>" :
      p.in_stock ? "<span class=\"btn sm\">Comprar</span>"
       : "<button class=\"btn sm ghost\" onclick=\"event.preventDefault();event.stopPropagation();openAviseModal('"+esc(p.id)+"','"+safeName+"')\">Avise-me</button>") +
   "</a>";
@@ -1300,6 +1305,13 @@ function contactWhatsappProduct(productName){
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+msg, "_blank");
 }
 
+function encomendarWhatsapp(){
+  var p = currentProduct(); if(!p) return;
+  var v = (selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
+  var op = v ? [v.color, (v.size && optKey(v.size)!=="unico") ? "tam. "+v.size : ""].filter(Boolean).join(" · ") : "";
+  var msg = "Oi! Quero encomendar a " + p.name + (op ? " (" + op + ")" : "") + " 💕 Tem disponível? Qual o prazo?\n" + window.location.href;
+  window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
+}
 function contactWhatsapp(productName){
   var msg = encodeURIComponent("Olá! Tenho interesse na peça: " + productName);
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+msg, "_blank");
@@ -1319,6 +1331,10 @@ function colorNameToHex(name){
   if(!name) return null;
   var n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
   var map = [
+    [["doce de leite"], "#c99a68"],
+    [["castanho"], "#7a4b2f"],
+    [["turquesa"], "#1aa3a3"],
+    [["petroleo"], "#0f5a64"],
     [["marinho"], "#1b2a4a"],
     [["preto","black"], "#111111"],
     [["off white","offwhite","branco"], "#f5f5f2"],
@@ -1428,7 +1444,7 @@ function pickersHtml(p){
   }
   var colors = productColors(p, false);
   if(colors.length){
-    html += "<div class=\"optlabel\">Cor: <b>"+(selColor!=null?esc(selColor):"")+"</b></div><div class=\"opts\">" +
+    html += "<div class=\"optlabel\">"+(p.sob_encomenda ? "Cor e frase" : "Cor")+": <b>"+(selColor!=null?esc(selColor):"")+"</b></div><div class=\"opts\">" +
       colors.map(function(c){
         var ok = optAvailable(p, selSize, c);
         return "<button class=\"opt"+(selColor!=null&&optKey(selColor)===optKey(c)?" selected":"")+(ok?"":" off")+"\" onclick=\"pickColor('"+esc(c).replace(/'/g,"\\'")+"')\">"+swatchHtml(c)+esc(c)+"</button>";
@@ -1479,6 +1495,7 @@ function selectVariation(idx){
   refreshVariationUI(p);
 }
 function detailStockHtml(p){
+  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Escolha a cor e a frase e chame a gente no WhatsApp: a gente confirma a disponibilidade e o prazo antes de você pagar 💕</div>";
   if(!p.in_stock) return "<div class=\"p-stock\">Produto esgotado no momento</div>";
   if(selectedVariationIdx!=null){
     var v = p.variations[selectedVariationIdx];
@@ -1490,6 +1507,12 @@ function detailStockHtml(p){
   return w2 ? "<div class=\"p-stock warn\">"+w2+"</div>" : "";
 }
 function detailActionsHtml(p, idx){
+  if(p.sob_encomenda){
+    var ve = (p.variations && idx!=null) ? p.variations[idx] : null;
+    return "<div class=\"buyrow\">" + (ve
+      ? "<button class=\"btn wa\" onclick=\"encomendarWhatsapp()\">"+ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Encomendar pelo WhatsApp</button>"
+      : "<button class=\"btn\" disabled>Escolha a cor e a frase</button>") + "</div>";
+  }
   var hasVariations = p.variations && p.variations.length;
   var v = (hasVariations && idx!=null) ? p.variations[idx] : null;
   var avail = hasVariations ? (v ? v.available!==false : !!p.in_stock) : !!p.in_stock;
@@ -1506,6 +1529,7 @@ function detailActionsHtml(p, idx){
   return "<div class=\"buyrow\"><button class=\"btn ghost\" onclick=\"openAviseModal('"+esc(realIdForAlert)+"','"+nameForAlert+"')\">Avise-me quando chegar</button></div>";
 }
 function buyNow(productId){
+  var _pe = findProductForRoute(productId); if(_pe && _pe.sob_encomenda) return;
   var p = findProductForRoute(productId);
   if(p && p.variations && p.variations.length && selectedVariationIdx==null){
     var falta = [];
@@ -1560,6 +1584,7 @@ function currentProduct(){
 }
 
 function addToCart(productId){
+  var _pa = findProductForRoute(productId); if(_pa && _pa.sob_encomenda) return;
   var p = findProductForRoute(productId);
   if(!p) return;
   if(!p.in_stock){ showToast("Produto sem estoque no momento."); return; }
