@@ -1305,12 +1305,17 @@ function contactWhatsappProduct(productName){
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+msg, "_blank");
 }
 
+function encEscolha(p){
+  var frase = (p.variations||[]).some(function(v){ return String(v.color||"").indexOf("·") > -1; });
+  var tam = productSizes(p).length > 1;
+  return (tam ? "o tamanho e " : "") + (frase ? "a cor e a frase" : "a cor");
+}
 function ehBiquini(p){ var t = normSearch((p.category||"")+" "+(p.name||"")); return t.indexOf("biquini") > -1; }
 function encomendarWhatsapp(){
   var p = currentProduct(); if(!p) return;
   var v = (selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
   var op = v ? [v.color, (v.size && optKey(v.size)!=="unico") ? "tam. "+v.size : ""].filter(Boolean).join(" · ") : "";
-  var msg = "Oi! Quero encomendar a " + p.name + (op ? " (" + op + ")" : "") + " 💕 Tem disponível? Qual o prazo?\n" + window.location.href;
+  var msg = "Oi! Quero encomendar: " + p.name + (op ? " (" + op + ")" : "") + " 💕 Tem disponível? Qual o prazo?\n" + window.location.href;
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
 }
 function contactWhatsapp(productName){
@@ -1447,7 +1452,7 @@ function pickersHtml(p){
   }
   var colors = productColors(p, false);
   if(colors.length){
-    html += "<div class=\"optlabel\">"+(p.sob_encomenda ? "Cor e frase" : "Cor")+": <b>"+(selColor!=null?esc(selColor):"")+"</b></div><div class=\"opts\">" +
+    html += "<div class=\"optlabel\">"+(encEscolha(p).indexOf("frase") > -1 ? "Cor e frase" : "Cor")+": <b>"+(selColor!=null?esc(selColor):"")+"</b></div><div class=\"opts\">" +
       colors.map(function(c){
         var ok = optAvailable(p, selSize, c);
         return "<button class=\"opt"+(selColor!=null&&optKey(selColor)===optKey(c)?" selected":"")+(ok?"":" off")+"\" onclick=\"pickColor('"+esc(c).replace(/'/g,"\\'")+"')\">"+swatchHtml(c)+esc(c)+"</button>";
@@ -1498,7 +1503,7 @@ function selectVariation(idx){
   refreshVariationUI(p);
 }
 function detailStockHtml(p){
-  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Escolha a cor e a frase e chame a gente no WhatsApp: a gente confirma a disponibilidade e o prazo antes de você pagar 💕</div>";
+  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Escolha "+encEscolha(p)+" e chame a gente no WhatsApp: a gente confirma a disponibilidade e o prazo antes de você pagar 💕</div>";
   if(!p.in_stock) return "<div class=\"p-stock\">Produto esgotado no momento</div>";
   if(selectedVariationIdx!=null){
     var v = p.variations[selectedVariationIdx];
@@ -1514,7 +1519,7 @@ function detailActionsHtml(p, idx){
     var ve = (p.variations && idx!=null) ? p.variations[idx] : null;
     return "<div class=\"buyrow\">" + (ve
       ? "<button class=\"btn wa\" onclick=\"encomendarWhatsapp()\">"+ICON.wa.replace("<svg","<svg width=\"20\" height=\"20\"")+" Encomendar pelo WhatsApp</button>"
-      : "<button class=\"btn\" disabled>Escolha a cor e a frase</button>") + "</div>";
+      : "<button class=\"btn\" disabled>Escolha "+encEscolha(p)+"</button>") + "</div>";
   }
   var hasVariations = p.variations && p.variations.length;
   var v = (hasVariations && idx!=null) ? p.variations[idx] : null;
