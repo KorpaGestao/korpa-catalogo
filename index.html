@@ -1282,7 +1282,7 @@ function renderProductPage(id){
         "<div class=\"acc-wrap\">" +
           (p.description ? "<details class=\"acc\" open><summary>Descrição</summary><div class=\"acc-body\">"+esc(p.description).replace(/\n/g,"<br>")+"</div></details>" : "") +
           (p.specs ? "<details class=\"acc\"><summary>Especificações</summary><div class=\"acc-body\">"+esc(p.specs).replace(/\n/g,"<br>")+"</div></details>" : "") +
-          "<details class=\"acc\"><summary>Entrega e trocas</summary><div class=\"acc-body\"><strong>🚚 Entregas</strong><br>Entrega própria em Fortaleza e região metropolitana. Pelos Correios, enviamos pra todo o Brasil com o frete calculado pelo CEP; a postagem é feita em até 1 dia útil após a confirmação do pagamento, e o prazo dos Correios conta a partir da postagem.<br><br><strong>🔄 Trocas</strong><br>Aceitamos troca somente em caso de defeito na peça, mediante vídeo de abertura do pacote. Por isso, confira direitinho as medidas antes de finalizar a compra! Qualquer dúvida, chama a gente no WhatsApp 💕</div></details>" +
+          "<details class=\"acc\"><summary>Entrega e trocas</summary><div class=\"acc-body\"><strong>🚚 Entregas</strong><br>Entrega própria em Fortaleza e região metropolitana. Pelos Correios, enviamos pra todo o Brasil com o frete calculado pelo CEP; a postagem é feita em até 1 dia útil após a confirmação do pagamento, e o prazo dos Correios conta a partir da postagem.<br><br><strong>🔄 Trocas</strong><br>"+(ehBiquini(p) ? "Biquíni não tem troca, por questão de higiene. Confira direitinho a tabela de medidas antes de encomendar e, na dúvida, chama a gente no WhatsApp 💕" : "Aceitamos troca somente em caso de defeito na peça, mediante vídeo de abertura do pacote. Por isso, confira direitinho as medidas antes de finalizar a compra! Qualquer dúvida, chama a gente no WhatsApp 💕")+"</div></details>" +
         "</div>" +
       "</div>" +
     "</div>" +
@@ -1305,6 +1305,7 @@ function contactWhatsappProduct(productName){
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+msg, "_blank");
 }
 
+function ehBiquini(p){ var t = normSearch((p.category||"")+" "+(p.name||"")); return t.indexOf("biquini") > -1; }
 function encomendarWhatsapp(){
   var p = currentProduct(); if(!p) return;
   var v = (selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
@@ -1332,6 +1333,8 @@ function colorNameToHex(name){
   var n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
   var map = [
     [["doce de leite"], "#c99a68"],
+    [["azul bebe","azul bb"], "#9fd2ef"],
+    [["pink"], "#e3408e"],
     [["castanho"], "#7a4b2f"],
     [["turquesa"], "#1aa3a3"],
     [["petroleo"], "#0f5a64"],
