@@ -1519,7 +1519,7 @@ function selectVariation(idx){
   refreshVariationUI(p);
 }
 function detailStockHtml(p){
-  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Toca em comprar e fala com a gente no WhatsApp: a gente te mostra "+(encEscolha(p).indexOf("frase") > -1 ? "as cores e frases" : (productSizes(p).length > 1 ? "os tamanhos e cores" : "as cores"))+" disponíveis e o prazo antes de você pagar 💕</div>";
+  if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Normalmente entrega em no máximo 24 horas. Toca em comprar e fala com a gente no WhatsApp: a gente te mostra "+(encEscolha(p).indexOf("frase") > -1 ? "as cores e frases" : (productSizes(p).length > 1 ? "os tamanhos e cores" : "as cores"))+" disponíveis antes de você pagar 💕</div>";
   if(!p.in_stock) return "<div class=\"p-stock\">Produto esgotado no momento</div>";
   if(selectedVariationIdx!=null){
     var v = p.variations[selectedVariationIdx];
