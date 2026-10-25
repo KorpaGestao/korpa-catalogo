@@ -427,6 +427,57 @@ html.ver-todos #todos{display:block;}
 .coupon-msg{font-size:12.5px;margin-top:6px;min-height:16px;}
 .coupon-msg.ok{color:#2e7d4f;}
 .coupon-msg.bad{color:#c0392b;}
+
+/* ================= PROMOCAO COM DATA (site_promocoes) - out/2026 ================= */
+.promo-hero{background:linear-gradient(135deg,#F6BFC9 0%,var(--pink) 52%,var(--pink-dark) 100%);color:#fff;position:relative;overflow:hidden;}
+.promo-hero::after{content:"";position:absolute;right:-120px;top:-120px;width:360px;height:360px;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none;}
+.promo-hero .ph-in{display:grid;grid-template-columns:1.15fr 1fr;gap:36px;align-items:center;padding-top:44px;padding-bottom:44px;position:relative;z-index:1;}
+.ph-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,.18);padding:6px 12px;}
+.ph-title{font-family:var(--display);font-stretch:125%;font-weight:900;font-size:clamp(36px,6vw,64px);line-height:.95;letter-spacing:-.02em;margin:14px 0 10px;color:#fff;}
+.ph-sub{font-size:16px;margin:0 0 22px;opacity:.96;}
+.cd-label{font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;font-weight:700;}
+.cd{display:flex;gap:8px;}
+.cd-box{flex:0 0 auto;min-width:66px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);padding:10px 6px 8px;text-align:center;}
+.cd-box b{display:block;font-family:var(--display);font-stretch:110%;font-weight:800;font-size:30px;line-height:1;font-variant-numeric:tabular-nums;}
+.cd-box span{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;margin-top:4px;opacity:.92;}
+.ph-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;}
+.btn.white{background:#fff;color:var(--pink-dark);border-color:#fff;font-weight:700;}
+.btn.white:hover{background:var(--ink);color:#fff;border-color:var(--ink);}
+.btn.outw{background:transparent;color:#fff;border-color:#fff;}
+.btn.outw:hover{background:#fff;color:var(--pink-dark);}
+.ph-imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.ph-imgs a{display:block;aspect-ratio:3/4;overflow:hidden;background:rgba(255,255,255,.2);position:relative;}
+.ph-imgs a:nth-child(2){transform:translateY(18px);}
+.ph-imgs img{width:100%;height:100%;object-fit:cover;transition:transform .4s ease;}
+.ph-imgs a:hover img{transform:scale(1.05);}
+.ph-imgs .ph-tag{position:absolute;left:6px;bottom:6px;background:#fff;color:var(--pink-dark);font-weight:800;font-size:12px;padding:3px 7px;}
+.ph-note{font-size:12.5px;opacity:.92;margin-top:12px;}
+.ph-ok{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;background:rgba(255,255,255,.2);padding:9px 14px;}
+.nav>a.navpromo{color:var(--pink-dark);font-weight:700;}
+.side-links a.navpromo{color:var(--pink-dark);font-weight:700;}
+.badge.soon{background:var(--ink);color:#fff;}
+.pteaser{font-size:12.5px;color:var(--pink-dark);font-weight:700;margin-top:3px;}
+.promo-box{border:1px solid var(--pink-line);background:var(--pink-soft);padding:14px 16px;margin:14px 0 6px;}
+.promo-box .pb-t{font-size:14.5px;color:var(--ink);line-height:1.4;}
+.promo-box .pb-t b{color:var(--pink-dark);}
+.promo-box .cd{margin-top:10px;}
+.promo-box .cd-box{background:#fff;border-color:var(--pink-line);color:var(--ink);min-width:54px;padding:7px 4px 6px;}
+.promo-box .cd-box b{font-size:21px;color:var(--pink-dark);}
+.promo-box .cd-box span{color:var(--muted);}
+.promo-box .btn{margin-top:12px;}
+.promo-box .pb-ok{margin-top:10px;font-size:13.5px;color:var(--ok);font-weight:600;}
+.promo-page-empty{text-align:center;padding:60px 16px;}
+@media(max-width:760px){
+  .promo-hero .ph-in{grid-template-columns:1fr;gap:22px;padding-top:30px;padding-bottom:30px;}
+  .ph-imgs{gap:6px;}
+  .ph-imgs a{aspect-ratio:1/1;}
+  .ph-imgs a:nth-child(2){transform:none;}
+  .cd{gap:6px;}
+  .cd-box{flex:1 1 0;min-width:0;padding:9px 2px 7px;}
+  .cd-box b{font-size:25px;}
+  .ph-actions .btn{flex:1 1 100%;}
+  .promo-box .cd-box{flex:1 1 0;}
+}
 </style>
 </head>
 <body>
@@ -522,8 +573,10 @@ return list.find(function(x){ return x.id===id; }) || null;
 
 async function loadProducts(){
   var _cfgP = carregarConfigSite();
+  var _promoP = carregarPromos();
   var res = await sb.from("catalog_products").select("*").order("created_at", {ascending:false});
   await _cfgP;
+  await _promoP;
   if(res.error){
     document.getElementById("app").innerHTML = "<div class=\"wrap\"><p>Não foi possível carregar a loja agora. Tente novamente em instantes.</p></div>";
     console.error(res.error);
@@ -546,10 +599,13 @@ function route(isRefresh){
     renderPagina(decodeURIComponent(hash.replace("#pagina/","")));
   } else if(hash.indexOf("#categoria/") === 0){
     renderHome(decodeURIComponent(hash.replace("#categoria/","")));
+  } else if(hash === "#promocao"){
+    renderPromoPage();
   } else {
     renderHome(null);
   }
   renderCartBadge();
+  try{ tickCountdowns(); }catch(e){}
   if(!isRefresh) window.scrollTo(0,0);
   try{ registrarVisita(); }catch(e){}
 }
@@ -737,6 +793,7 @@ function headerHtml(activeKey){
         "<a class=\""+(activeKey==="home"?"active":"")+"\" onclick=\"goHome()\">Início</a>" +
         "<div class=\"navdrop\"><span class=\""+(activeKey==="cat"?"active":"")+"\" onclick=\"scrollToAll()\">Produtos "+ICON.chevDown+"</span>" +
           "<div class=\"navdrop-menu\"><a onclick=\"scrollToAll()\"><b>Ver todos</b><small>"+buildDisplayProducts().length+"</small></a>"+catLinks+"</div></div>" +
+        (promoCampanha() ? "<a class=\"navpromo"+(activeKey==="promo"?" active":"")+"\" href=\"#promocao\">🔥 Promoção</a>" : "") +
         "<a onclick=\"contactHelpWhatsapp()\">Contato</a>" +
       "</nav>" +
     "</div>" +
@@ -750,6 +807,7 @@ function headerHtml(activeKey){
       "<div class=\"side-head\">"+logoHtml()+"<button class=\"xbtn\" onclick=\"toggleSideMenu(false)\">&times;</button></div>" +
       "<div class=\"side-links\">" +
         "<a onclick=\"toggleSideMenu(false);goHome()\">Início</a>" +
+        (promoCampanha() ? "<a class=\"navpromo\" onclick=\"toggleSideMenu(false);window.location.hash='#promocao'\">🔥 Promoção</a>" : "") +
         "<a onclick=\"toggleSideMenu(false);scrollToAll()\">Todos os produtos<small class=\"muted\">"+buildDisplayProducts().length+"</small></a>" +
         "<div class=\"side-title\">Categorias</div>" +
         cats.map(function(c){ return "<a onclick=\"toggleSideMenu(false);window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\">"+esc(c)+"<small class=\"muted\">"+countInCategory(c)+"</small></a>"; }).join("") +
@@ -805,7 +863,7 @@ function pixOffPct(){ return Math.round(100*(1-1/(1+cardFeePct()/100))); }
 function pixLine(n){ return "<span class=\"pixline\">"+brl(n)+" no Pix <span class=\"pixoff\">"+pixOffPct()+"% OFF</span></span>"; }
 /* Preco em destaque = preco no cartao; preco do sistema = preco no Pix (com selo de desconto) */
 function priceHtmlFor(p, v){
-  if(p.promo_price){ return "<span class=\"old\">"+brl(cardPrice(p.price))+"</span>"+brl(cardPrice(p.promo_price))+pixLine(p.promo_price); }
+  if(p.promo_price){ var cheio = precoCheio(p, v); return (cheio > Number(p.promo_price) ? "<span class=\"old\">"+brl(cardPrice(cheio))+"</span>" : "")+brl(cardPrice(p.promo_price))+pixLine(p.promo_price); }
   if(v && v.price!=null){ return brl(cardPrice(v.price))+pixLine(v.price); }
   if(p.price_min!=null && p.price_max!=null && Number(p.price_min)!==Number(p.price_max)){ return "<span class=\"from\">a partir de </span>"+brl(cardPrice(p.price_min))+pixLine(p.price_min); }
   if(p.price_min!=null){ return brl(cardPrice(p.price_min))+pixLine(p.price_min); }
@@ -941,7 +999,8 @@ function productCardHtml(p){
   var stock = productStock(p);
   var warn = p.in_stock ? stockWarnText(stock) : "";
   var badge = !p.in_stock ? "<span class=\"badge oos\">Esgotado</span>" :
-    (p.promo_price ? "<span class=\"badge promo\">-"+Math.round((1-Number(p.promo_price)/Number(p.price||p.promo_price))*100)+"%</span>" :
+    (p.promo_price ? (pctOff(precoCheio(p,null), p.promo_price) > 0 ? "<span class=\"badge promo\">-"+pctOff(precoCheio(p,null), p.promo_price)+"%</span>" : "<span class=\"badge promo\">Promo</span>") :
+     promoEmBreve(p) ? "<span class=\"badge soon\">"+esc(promoBadgeEmBreve(p))+"</span>" :
      (productKit(p) ? "<span class=\"badge kit\">"+esc(kitTexto(productKit(p)))+"</span>" : seloBadge(p)));
   var safeName = esc(p.name).replace(/'/g,"");
   return "<a class=\"pcard\" href=\""+routeId(p)+"\">" +
@@ -953,8 +1012,10 @@ function productCardHtml(p){
     "<div class=\"swatches\">"+colors.map(swatchHtml).join("")+"</div>" +
     "<div class=\"pname\">"+esc(p.name)+"</div>" +
     "<div class=\"pprice\">"+priceHtmlFor(p,null)+"</div>" +
+    (promoEmBreve(p) ? "<div class=\"pteaser\">"+esc(promoTeaserTexto(p))+"</div>" : "") +
     (warn ? "<div class=\"stockwarn\">"+warn+"</div>" : "") +
-    (p.in_stock ? "<span class=\"btn sm\">Comprar</span>"
+    (p.in_stock && promoEmBreve(p) && cardComAviso ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();abrirAvisoPromo('"+esc(p.id)+"')\">🔔 Me avisa</button>" :
+     p.in_stock ? "<span class=\"btn sm\">Comprar</span>"
       : "<button class=\"btn sm ghost\" onclick=\"event.preventDefault();event.stopPropagation();openAviseModal('"+esc(p.id)+"','"+safeName+"')\">Avise-me</button>") +
   "</a>";
 }
@@ -1127,7 +1188,9 @@ function renderHome(categoryFilter){
     vantagens: perksHtml(),
     todos: "<section class='section' id='todos'><div class='wrap'><div class='section-head'><h2>Todos os produtos</h2></div>" + toolbarHtml(null) + gridOrEmpty(sortList(displayList), "Nenhum produto disponível no momento.") + "</div></section>"
   };
-  body = ordemSecoes(!featured.length).map(function(k){ return SEC[k] || ""; }).join("");
+  var _camp = promoCampanha();
+  if(_camp){ SEC.promocoes = ""; }
+  body = (_camp ? promoHeroHtml(_camp, true) : "") + ordemSecoes(!featured.length).map(function(k){ return SEC[k] || ""; }).join("");
   setTimeout(function(){ if(document.getElementById("hero")){ startHeroTimer(); enableHeroSwipe(); } }, 0);
 
   document.getElementById("app").innerHTML = top + body + renderFooter();
@@ -1197,6 +1260,7 @@ function renderProductPage(id){
       "<div class=\"info-col\">" +
         "<h1 class=\"p-title\">"+esc(p.name)+"</h1>" +
         "<div class=\"p-price\" id=\"detail-price\">"+priceHtmlFor(p,null)+"</div>" +
+        promoBoxProdutoHtml(p) +
         (productKit(p) ? "<div class=\"kitpill\">"+esc(kitTexto(productKit(p)))+" no Pix <small>· misture modelos e cores · não é cumulativa com cupons de desconto</small></div>" : "") +
         "<div id=\"variation-pickers\">"+pickersHtml(p)+"</div>" +
         "<div id=\"detail-stock\">"+detailStockHtml(p)+"</div>" +
@@ -2216,6 +2280,224 @@ document.body.insertAdjacentHTML("beforeend",
 renderCartBadge();
 document.addEventListener("keydown", function(e){ if(e.key==="Escape"){ toggleCart(false); closePixModal(); closeAviseModal(); toggleSideMenu(false); } });
 
+/* ================= PROMOCAO COM DATA DE INICIO E FIM (out/2026) =================
+   Fonte: tabela site_promocoes (Painel do Site), lida pela vista publica site_promo_vitrine
+   (so promocoes ativas que ainda nao terminaram). O PRECO de verdade continua vindo da
+   catalog_products / criar-pedido, que so aplicam a promocao dentro do periodo.
+   Aqui o site so: mostra a aba Promocao, o destaque na home, a contagem regressiva e o
+   "Me avisa quando comecar" (e-mail, tabela promo_avisos). Quando a promocao termina,
+   tudo isso some sozinho. */
+var PROMOS = [];
+var cardComAviso = false;
+var _cdRecarregou = {};
+async function carregarPromos(){
+  try{
+    var r = await sb.from("site_promo_vitrine").select("*");
+    if(!r.error && r.data){
+      PROMOS = r.data.map(function(x){
+        return { id:x.id, nome:x.nome||"Promoção", tipo:x.tipo, valor:Number(x.valor)||0, product_ids:x.product_ids||[],
+                 inicio: x.inicio ? Date.parse(x.inicio) : 0, fim: x.fim ? Date.parse(x.fim) : null };
+      });
+    }
+  }catch(e){}
+}
+function precoCheio(p, v){
+  if(v && v.price != null) return Number(v.price);
+  if(p.price_max != null) return Number(p.price_max);
+  return Number(p.price || 0);
+}
+function pctOff(de, por){ de = Number(de); por = Number(por); return (de > 0 && por < de) ? Math.round((1 - por/de)*100) : 0; }
+function promoDoProduto(p){
+  var ids = [p.id].concat(p._members || []);
+  var agora = Date.now();
+  for(var i=0;i<PROMOS.length;i++){
+    var pr = PROMOS[i];
+    if(pr.fim && pr.fim <= agora) continue;
+    if(pr.product_ids.some(function(id){ return ids.indexOf(id) > -1; })) return pr;
+  }
+  return null;
+}
+function precoNaPromo(pr, p){
+  if(pr.tipo === "pct") return Math.max(0.01, Math.round(Number(p.price||0)*(1-pr.valor/100)*100)/100);
+  return pr.valor;
+}
+function promoEmBreve(p){ var pr = promoDoProduto(p); return !!(pr && pr.inicio > Date.now() && p.in_stock); }
+function promoAtiva(p){ var pr = promoDoProduto(p); return !!(pr && pr.inicio <= Date.now()); }
+function promoBadgeEmBreve(p){
+  var pr = promoDoProduto(p); var off = pctOff(precoCheio(p,null), precoNaPromo(pr,p));
+  return (off > 0 ? "-"+off+"% " : "") + diaCurto(pr.inicio);
+}
+function promoTeaserTexto(p){
+  var pr = promoDoProduto(p);
+  return "🔥 " + diaCurto(pr.inicio) + ": " + brl(precoNaPromo(pr,p)) + " no Pix";
+}
+var _TZ = "America/Fortaleza";
+function diaSemana(ms){ try{ return new Date(ms).toLocaleDateString("pt-BR",{weekday:"long", timeZone:_TZ}).replace("-feira",""); }catch(e){ return ""; } }
+function diaMes(ms){ try{ return new Date(ms).toLocaleDateString("pt-BR",{day:"2-digit", month:"2-digit", timeZone:_TZ}); }catch(e){ return ""; } }
+function cap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+/* "Sexta" se for nos proximos 6 dias, senao "30/10" */
+function diaCurto(ms){ return (ms - Date.now() < 6*86400000) ? cap(diaSemana(ms)) : diaMes(ms); }
+function periodoTexto(c){
+  var fimReal = c.fim ? c.fim - 60000 : null;
+  return cap(diaSemana(c.inicio)) + " " + diaMes(c.inicio) + (fimReal ? " a " + diaSemana(fimReal) + " " + diaMes(fimReal) : "");
+}
+/* Campanha em destaque: a promocao (por nome) que comeca/termina primeiro e tem peca com estoque */
+function promoCampanha(){
+  if(!PROMOS.length || !products.length) return null;
+  var agora = Date.now(), grupos = {};
+  PROMOS.forEach(function(pr){
+    if(pr.fim && pr.fim <= agora) return;
+    var g = grupos[pr.nome] || (grupos[pr.nome] = { nome:pr.nome, inicio:pr.inicio, fim:pr.fim, itens:[] });
+    g.inicio = Math.min(g.inicio, pr.inicio);
+    if(pr.fim) g.fim = g.fim ? Math.max(g.fim, pr.fim) : pr.fim;
+    pr.product_ids.forEach(function(id){
+      var p = products.find(function(x){ return x.id === id && x.in_stock; });
+      if(p && g.itens.indexOf(p) === -1) g.itens.push(p);
+    });
+  });
+  var lista = Object.keys(grupos).map(function(k){ return grupos[k]; }).filter(function(g){ return g.itens.length; });
+  if(!lista.length) return null;
+  lista.sort(function(a,b){ return (a.inicio > agora ? a.inicio : (a.fim||9e15)) - (b.inicio > agora ? b.inicio : (b.fim||9e15)); });
+  var c = lista[0];
+  c.fase = c.inicio > agora ? "antes" : "ativa";
+  c.maxOff = 0;
+  c.itens.forEach(function(p){ var pr = promoDoProduto(p); if(pr){ var o = pctOff(precoCheio(p,null), precoNaPromo(pr,p)); if(o > c.maxOff) c.maxOff = o; } });
+  return c;
+}
+function cdHtml(alvo, classe){
+  return "<div class=\"cd "+(classe||"")+"\" data-alvo=\""+alvo+"\">" +
+    ["dias","horas","min","seg"].map(function(u){ return "<div class=\"cd-box\"><b data-u=\""+u+"\">--</b><span>"+u+"</span></div>"; }).join("") +
+  "</div>";
+}
+function tickCountdowns(){
+  var els = document.querySelectorAll(".cd[data-alvo]");
+  if(!els.length) return;
+  var agora = Date.now();
+  [].forEach.call(els, function(el){
+    var alvo = Number(el.getAttribute("data-alvo")), d = Math.max(0, alvo - agora);
+    var t = Math.floor(d/1000), v = { dias:Math.floor(t/86400), horas:Math.floor(t%86400/3600), min:Math.floor(t%3600/60), seg:t%60 };
+    [].forEach.call(el.querySelectorAll("b[data-u]"), function(b){ var n = v[b.getAttribute("data-u")]; b.textContent = (n<10?"0":"")+n; });
+    if(d === 0 && !_cdRecarregou[alvo]){ _cdRecarregou[alvo] = true; setTimeout(function(){ loadProducts(); }, 2500); }
+  });
+}
+setInterval(tickCountdowns, 1000);
+
+function promoHeroHtml(c, naHome){
+  var antes = c.fase === "antes";
+  var _off = function(p){ var pr = promoDoProduto(p); return pr ? pctOff(precoCheio(p,null), precoNaPromo(pr,p)) : 0; };
+  var imgs = c.itens.filter(function(p){ return p.images && p.images[0]; }).slice().sort(function(a,b){ return _off(b) - _off(a); }).slice(0,3);
+  var jaInscrita = avisoPromoFeito(c.nome, "todas");
+  return "<section class=\"promo-hero\"><div class=\"wrap ph-in\">" +
+    "<div>" +
+      "<span class=\"ph-eyebrow\">🔥 "+esc(c.nome)+"</span>" +
+      "<h2 class=\"ph-title\">"+(c.maxOff > 0 ? "Até "+c.maxOff+"% OFF" : "Preços especiais")+"</h2>" +
+      "<p class=\"ph-sub\">"+c.itens.length+" "+(c.itens.length===1?"peça selecionada":"peças selecionadas")+" com preço de promoção · "+esc(periodoTexto(c))+"</p>" +
+      "<div class=\"cd-label\">"+(antes ? "Começa em" : "Termina em")+"</div>" +
+      cdHtml(antes ? c.inicio : c.fim) +
+      "<div class=\"ph-actions\">" +
+        (naHome ? "<a class=\"btn white\" href=\"#promocao\">"+(antes ? "Ver as peças" : "Aproveitar agora")+"</a>" : "") +
+        (antes ? (jaInscrita ? "<span class=\"ph-ok\">✓ Você vai ser avisada por e-mail</span>" : "<button class=\"btn outw\" onclick=\"abrirAvisoPromo('todas')\">🔔 Me avisa quando começar</button>") : "") +
+      "</div>" +
+      (antes ? "<div class=\"ph-note\">Estoque limitado: são poucas peças de cada.</div>" : "") +
+    "</div>" +
+    (imgs.length ? "<div class=\"ph-imgs\">" + imgs.map(function(p){
+      var pr = promoDoProduto(p), off = pr ? pctOff(precoCheio(p,null), precoNaPromo(pr,p)) : 0;
+      return "<a href=\""+routeId(p)+"\"><img src=\""+esc(p.images[0])+"\" alt=\""+esc(p.name)+"\" loading=\"lazy\">"+(off>0?"<span class=\"ph-tag\">-"+off+"%</span>":"")+"</a>";
+    }).join("") + "</div>" : "") +
+  "</div></section>" +
+  (naHome ? "<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\"><h2>"+esc(c.nome)+"</h2><a class=\"linkbtn\" href=\"#promocao\">Ver todas</a></div>"+railHtml("rail-promo-data", c.itens)+"</div></section>" : "");
+}
+function renderPromoPage(){
+  var c = promoCampanha();
+  var top = headerHtml("promo");
+  if(!c){
+    document.title = "Promoção · KORPA";
+    document.getElementById("app").innerHTML = top + "<div class=\"wrap promo-page-empty\"><h2 class=\"display\" style=\"font-size:26px\">Nenhuma promoção no momento</h2><p class=\"muted\">Fica de olho no nosso Instagram pra não perder a próxima 💕</p><br><button class=\"btn\" onclick=\"goHome()\">Ver todos os produtos</button></div>" + renderFooter();
+    return;
+  }
+  document.title = c.nome + " · KORPA Moda Fitness Feminina";
+  cardComAviso = true;
+  var grid = gridOrEmpty(c.itens, "");
+  cardComAviso = false;
+  document.getElementById("app").innerHTML = top + promoHeroHtml(c, false) +
+    "<div class=\"wrap\"><section class=\"section\"><div class=\"section-head\"><h2>Peças da promoção</h2><span class=\"muted\">"+c.itens.length+" "+(c.itens.length===1?"peça":"peças")+"</span></div>" +
+    (c.fase === "antes" ? "<p class=\"muted\" style=\"margin:-10px 0 20px\">Os preços de promoção entram no site automaticamente "+esc(diaSemana(c.inicio))+" "+esc(diaMes(c.inicio))+" à meia-noite. Toca em 🔔 Me avisa e a gente te manda um e-mail na hora 💕</p>" : "") +
+    grid + "</section></div>" + renderFooter();
+  tickCountdowns();
+}
+function promoBoxProdutoHtml(p){
+  var pr = promoDoProduto(p); if(!pr || !p.in_stock) return "";
+  var agora = Date.now();
+  if(pr.inicio > agora){
+    var ja = avisoPromoFeito(pr.nome, p.id) || avisoPromoFeito(pr.nome, "todas");
+    return "<div class=\"promo-box\"><div class=\"pb-t\">🔥 <b>"+esc(pr.nome)+"</b>: essa peça vai sair por <b>"+brl(precoNaPromo(pr,p))+" no Pix</b> a partir de "+esc(diaSemana(pr.inicio))+" "+esc(diaMes(pr.inicio))+" à meia-noite.</div>" +
+      cdHtml(pr.inicio) +
+      (ja ? "<div class=\"pb-ok\">✓ Você vai receber um e-mail quando a promoção começar</div>" : "<button class=\"btn block\" onclick=\"abrirAvisoPromo('"+esc(p.id)+"')\">🔔 Me avisa quando começar</button>") +
+    "</div>";
+  }
+  if(pr.fim) return "<div class=\"promo-box\"><div class=\"pb-t\">🔥 <b>"+esc(pr.nome)+"</b> · preço de promoção por tempo limitado. Termina em:</div>"+cdHtml(pr.fim)+"</div>";
+  return "";
+}
+
+/* ---- "Me avisa quando comecar" por e-mail (tabela promo_avisos) ---- */
+var _avisoPromoAlvo = null;
+function avisoPromoFeito(nome, pid){ try{ var o = JSON.parse(localStorage.getItem("korpa_avisos_promo")||"{}"); return !!o[nome+"|"+pid]; }catch(e){ return false; } }
+function marcarAvisoPromo(nome, pid){ try{ var o = JSON.parse(localStorage.getItem("korpa_avisos_promo")||"{}"); o[nome+"|"+pid] = 1; localStorage.setItem("korpa_avisos_promo", JSON.stringify(o)); }catch(e){} }
+function abrirAvisoPromo(pid){
+  var c = promoCampanha();
+  var p = pid !== "todas" ? products.find(function(x){ return x.id === pid; }) : null;
+  var pr = p ? promoDoProduto(p) : null;
+  var nome = pr ? pr.nome : (c ? c.nome : "Promoção");
+  _avisoPromoAlvo = { pid: pid, nome: nome, produto: p ? p.name : "Todas as peças da promoção" };
+  document.getElementById("pa-txt").innerHTML = p
+    ? "Deixa seu e-mail que a gente te avisa quando <b>"+esc(p.name)+"</b> entrar na promoção por <b>"+brl(precoNaPromo(pr,p))+" no Pix</b>."
+    : "Deixa seu e-mail que a gente te avisa no minuto em que a <b>"+esc(nome)+"</b> começar.";
+  var salvo = ""; try{ salvo = localStorage.getItem("korpa_email_promo") || ""; }catch(e){}
+  document.getElementById("pa-email").value = salvo;
+  document.getElementById("pa-err").textContent = "";
+  document.getElementById("pa-form").style.display = "";
+  document.getElementById("pa-ok").style.display = "none";
+  var b = document.getElementById("pa-btn"); b.disabled = false; b.textContent = "Quero ser avisada";
+  document.getElementById("pa-overlay").classList.add("show");
+  document.getElementById("pa-modal").classList.add("open");
+  setTimeout(function(){ var i = document.getElementById("pa-email"); if(i && !salvo) i.focus(); }, 60);
+}
+function fecharAvisoPromo(){
+  var o = document.getElementById("pa-overlay"), m = document.getElementById("pa-modal");
+  if(o) o.classList.remove("show"); if(m) m.classList.remove("open");
+}
+async function enviarAvisoPromo(){
+  var email = document.getElementById("pa-email").value.trim().toLowerCase();
+  var err = document.getElementById("pa-err"); err.textContent = "";
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120){ err.textContent = "Digite um e-mail válido."; return; }
+  var b = document.getElementById("pa-btn"); b.disabled = true; b.textContent = "Enviando...";
+  var a = _avisoPromoAlvo;
+  var res = await sb.from("promo_avisos").insert({ promo_nome: a.nome, product_id: a.pid, product_name: a.produto, email: email });
+  b.disabled = false; b.textContent = "Quero ser avisada";
+  if(res.error && res.error.code !== "23505"){ err.textContent = "Não foi possível salvar agora. Tente de novo."; return; }
+  try{ localStorage.setItem("korpa_email_promo", email); }catch(e){}
+  marcarAvisoPromo(a.nome, a.pid);
+  document.getElementById("pa-form").style.display = "none";
+  document.getElementById("pa-ok").style.display = "block";
+  setTimeout(function(){ fecharAvisoPromo(); route(true); }, 2600);
+}
+document.body.insertAdjacentHTML("beforeend",
+  "<div class=\"avise-modal-overlay\" id=\"pa-overlay\" onclick=\"fecharAvisoPromo()\"></div>" +
+  "<div class=\"avise-modal\" id=\"pa-modal\" role=\"dialog\" aria-label=\"Avise-me da promoção\">" +
+    "<div class=\"modal-head\"><h3>🔔 Me avisa quando começar</h3><button class=\"xbtn\" onclick=\"fecharAvisoPromo()\" aria-label=\"Fechar\">&times;</button></div>" +
+    "<div class=\"modal-body\">" +
+      "<div id=\"pa-form\">" +
+        "<p style=\"font-size:14.5px;margin:0 0 14px;line-height:1.5\" id=\"pa-txt\"></p>" +
+        "<div class=\"field\"><label>Seu e-mail</label><input id=\"pa-email\" type=\"email\" inputmode=\"email\" autocomplete=\"email\" placeholder=\"seuemail@gmail.com\" maxlength=\"120\" onkeydown=\"if(event.key==='Enter')enviarAvisoPromo()\"></div>" +
+        "<button class=\"btn block\" id=\"pa-btn\" onclick=\"enviarAvisoPromo()\">Quero ser avisada</button>" +
+        "<div class=\"avise-error\" id=\"pa-err\"></div>" +
+        "<p class=\"muted\" style=\"font-size:12px;margin:12px 0 0\">A gente só usa seu e-mail pra avisar dessa promoção 💕</p>" +
+      "</div>" +
+      "<div class=\"avise-success\" id=\"pa-ok\" style=\"display:none;\">Prontinho! Você vai receber um e-mail assim que a promoção começar 💕</div>" +
+    "</div>" +
+  "</div>");
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") fecharAvisoPromo(); });
+
 /* ---------- BOOTSTRAP + ATUALIZACAO AUTOMATICA ---------- */
 loadProducts();
 setInterval(function(){ if(document.visibilityState==="visible" && !isUserBusy()) loadProducts(); }, 60000);
@@ -2363,7 +2645,7 @@ function montarPopupLead(){
         "<div class=\"field\"><label>WhatsApp (com DDD)</label><input id=\"lp-whats\" type=\"tel\" inputmode=\"numeric\" autocomplete=\"tel\" placeholder=\"85999999999\" maxlength=\"15\" onkeydown=\"if(event.key==='Enter')enviarLead()\"></div>" +
         "<button class=\"btn block\" id=\"lp-btn\" onclick=\"enviarLead()\">Quero meu cupom</button>" +
         "<div class=\"lp-err\" id=\"lp-err\"></div>" +
-        "<div class=\"lp-fine\">"+esc(popupTxt("aviso","Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. Não é cumulativo com promoções (ex.: Leve 2 por R$ 70). A gente só usa seu contato pra te mandar novidades da KORPA."))+"</div>" +
+        "<div class=\"lp-fine\">"+esc(popupTxt("aviso","Cupom de uso único por WhatsApp, válido no pagamento via Pix aqui no site. Não é cumulativo com promoções. A gente só usa seu contato pra te mandar novidades da KORPA."))+"</div>" +
       "</div>" +
       "<div class=\"lp-body\" id=\"lp-done\" style=\"display:none\">" +
         "<p style=\"text-align:center;margin:0 0 4px\" id=\"lp-ola\"></p>" +
