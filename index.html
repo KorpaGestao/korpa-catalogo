@@ -193,6 +193,8 @@ h1,h2,h3{margin:0;}
 .gallery-thumbs img.active,.gallery-thumbs img:hover{opacity:1;border-color:var(--ink);}
 .gallery-main{aspect-ratio:3/4;background:var(--soft);position:relative;overflow:hidden;}
 .gallery-main img{width:100%;height:100%;object-fit:cover;}
+.vthumb-wrap{position:relative;display:block;flex-shrink:0;cursor:pointer;}
+.vthumb-wrap .vthumb-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;}
 .gallery-main .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#bbb;}
 .gal-arrow{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;}
 .gal-arrow svg{width:18px;height:18px;}
@@ -1285,7 +1287,7 @@ function renderProductPage(id){
   galleryIndex = 0;
   selectedVariationIdx = null;
   selSize = null; selColor = null;
-  var images = (p.images||[]).filter(Boolean);
+  var images = galleryMedia(p);
   var related = buildDisplayProducts().filter(function(x){ var isMember = p._members && p._members.indexOf(x.id)>-1; return x.id!==p.id && !isMember && x.category && x.category===p.category && x.in_stock; }).slice(0,8);
   if(related.length<4){
     buildDisplayProducts().forEach(function(x){ if(related.length<8 && x.id!==p.id && x.in_stock && related.indexOf(x)===-1 && x.category!==p.category) related.push(x); });
@@ -1295,9 +1297,9 @@ function renderProductPage(id){
   var savedCep = loadSavedCep();
 
   var gallery = "<div class=\"gallery"+(images.length>1?"":" single")+"\">" +
-    (images.length>1 ? "<div class=\"gallery-thumbs\">"+images.map(function(url,idx){ return "<img src=\""+esc(url)+"\" class=\""+(idx===0?"active":"")+"\" onclick=\"setGalleryImage("+idx+")\" data-idx=\""+idx+"\" alt=\"\">"; }).join("")+"</div>" : "") +
+    (images.length>1 ? "<div class=\"gallery-thumbs\">"+images.map(function(url,idx){ return mediaThumbHtml(url, idx); }).join("")+"</div>" : "") +
     "<div class=\"gallery-main\" id=\"gallery-main-box\">" +
-      "<div id=\"gallery-main\" style=\"height:100%\">"+(images[0] ? "<img src=\""+esc(images[0])+"\" id=\"gallery-main-img\" alt=\""+esc(p.name)+"\">" : "<span class=\"noimg\">"+ICON.camera.replace("<svg","<svg width=\"64\" height=\"64\"")+"</span>")+"</div>" +
+      "<div id=\"gallery-main\" style=\"height:100%\">"+(images[0] ? mediaMainHtml(images[0], p.name) : "<span class=\"noimg\">"+ICON.camera.replace("<svg","<svg width=\"64\" height=\"64\"")+"</span>")+"</div>" +
       (images.length>1 ? "<button class=\"gal-arrow prev\" onclick=\"galleryStep(-1)\" aria-label=\"Foto anterior\">"+ICON.left+"</button><button class=\"gal-arrow next\" onclick=\"galleryStep(1)\" aria-label=\"Próxima foto\">"+ICON.right+"</button><span class=\"gal-count\" id=\"gal-count\">1/"+images.length+"</span>" : "") +
     "</div></div>";
 
@@ -1601,19 +1603,33 @@ function buyNow(productId){
 }
 
 /* ---------- GALERIA ---------- */
+/* Videos (26/out/2026): site_produtos.videos -> catalog_products.videos. Entram na galeria depois das fotos.
+   Capa do video = mesmo endereco trocando a extensao por .jpg (se nao existir, o video aparece sem capa). */
+function ehVideo(u){ return /\.(mp4|webm|mov)(\?|#|$)/i.test(String(u||"")); }
+function capaVideo(u){ return String(u||"").replace(/\.(mp4|webm|mov)(\?.*)?$/i, ".jpg"); }
+function galleryMedia(p){ var f = (p.images||[]).filter(Boolean); var v = (p.videos||[]).filter(Boolean); return f.concat(v); }
+function mediaMainHtml(u, alt){
+  if(ehVideo(u)) return "<video src=\""+esc(u)+"\" poster=\""+esc(capaVideo(u))+"\" id=\"gallery-main-img\" autoplay muted loop playsinline controls preload=\"metadata\" style=\"width:100%;height:100%;object-fit:cover;background:#000\"></video>";
+  return "<img src=\""+esc(u)+"\" id=\"gallery-main-img\" alt=\""+esc(alt||"")+"\">";
+}
+function mediaThumbHtml(u, idx){
+  var cls = (idx===0?"active":"") + (ehVideo(u)?" vthumb":"");
+  if(ehVideo(u)) return "<span class=\"vthumb-wrap\" onclick=\"setGalleryImage("+idx+")\"><img src=\""+esc(capaVideo(u))+"\" class=\""+cls+"\" data-idx=\""+idx+"\" alt=\"Vídeo\"><span class=\"vthumb-play\">▶</span></span>";
+  return "<img src=\""+esc(u)+"\" class=\""+cls+"\" onclick=\"setGalleryImage("+idx+")\" data-idx=\""+idx+"\" alt=\"\">";
+}
 function setGalleryImage(idx){
   var p = currentProduct();
   if(!p) return;
-  var images = (p.images||[]).filter(Boolean);
+  var images = galleryMedia(p);
   if(!images[idx]) return;
   galleryIndex = idx;
-  document.getElementById("gallery-main").innerHTML = "<img src=\""+esc(images[idx])+"\" id=\"gallery-main-img\" alt=\"\">";
+  document.getElementById("gallery-main").innerHTML = mediaMainHtml(images[idx], "");
   document.querySelectorAll(".gallery-thumbs img").forEach(function(img,i){ img.classList.toggle("active", i===idx); });
   var c = document.getElementById("gal-count"); if(c) c.textContent = (idx+1)+"/"+images.length;
 }
 function galleryStep(d){
   var p = currentProduct(); if(!p) return;
-  var n = (p.images||[]).filter(Boolean).length; if(n<2) return;
+  var n = galleryMedia(p).length; if(n<2) return;
   setGalleryImage((galleryIndex + d + n) % n);
 }
 function enableGallerySwipe(){
