@@ -2407,6 +2407,8 @@ function promoCampanha(){
   var agora = Date.now(), grupos = {};
   PROMOS.forEach(function(pr){
     if(pr.fim && pr.fim <= agora) return;
+    /* pre-venda nao vira banner de campanha: ja tem o selo "Pre-venda" nas pecas */
+    if(/pr[eé][\s-]*venda/i.test(String(pr.nome||""))) return;
     var g = grupos[pr.nome] || (grupos[pr.nome] = { nome:pr.nome, inicio:pr.inicio, fim:pr.fim, itens:[] });
     g.inicio = Math.min(g.inicio, pr.inicio);
     if(pr.fim) g.fim = g.fim ? Math.max(g.fim, pr.fim) : pr.fim;
@@ -2452,8 +2454,7 @@ function promoHeroHtml(c, naHome){
       "<span class=\"ph-eyebrow\">🔥 "+esc(c.nome)+"</span>" +
       "<h2 class=\"ph-title\">"+(c.maxOff > 0 ? "Até "+c.maxOff+"% OFF" : "Preços especiais")+"</h2>" +
       "<p class=\"ph-sub\">"+c.itens.length+" "+(c.itens.length===1?"peça selecionada":"peças selecionadas")+" com preço de promoção · "+esc(periodoTexto(c))+"</p>" +
-      "<div class=\"cd-label\">"+(antes ? "Começa em" : "Termina em")+"</div>" +
-      cdHtml(antes ? c.inicio : c.fim) +
+      ((antes ? c.inicio : c.fim) ? "<div class=\"cd-label\">"+(antes ? "Começa em" : "Termina em")+"</div>" + cdHtml(antes ? c.inicio : c.fim) : "") +
       "<div class=\"ph-actions\">" +
         (naHome ? "<a class=\"btn white\" href=\"#promocao\">"+(antes ? "Ver as peças" : "Aproveitar agora")+"</a>" : "") +
         (antes ? (jaInscrita ? "<span class=\"ph-ok\">✓ Você vai ser avisada por e-mail</span>" : "<button class=\"btn outw\" onclick=\"abrirAvisoPromo('todas')\">🔔 Me avisa quando começar</button>") : "") +
