@@ -456,6 +456,10 @@ html.ver-todos #todos{display:block;}
 .nav>a.navpromo{color:var(--pink-dark);font-weight:700;}
 .side-links a.navpromo{color:var(--pink-dark);font-weight:700;}
 .badge.soon{background:var(--ink);color:#fff;}
+.badge.pre{background:var(--pink-dark);color:#fff;font-weight:700;}
+.pre-note{border:1px dashed var(--pink);background:var(--pink-soft);padding:12px 14px;font-size:14px;line-height:1.5;margin:10px 0 4px;color:var(--ink);}
+.pre-note b{color:var(--pink-dark);}
+.pteaser.pre{color:var(--pink-dark);font-weight:600;}
 .badge.enc{background:#fff;color:var(--pink-dark);border:1px solid var(--pink-dark);font-weight:700;}
 .enc-note{border:1px dashed var(--pink);background:var(--pink-soft);padding:12px 14px;font-size:14px;line-height:1.5;margin:10px 0 4px;color:var(--ink);}
 .enc-note b{color:var(--pink-dark);}
@@ -885,6 +889,9 @@ function productStock(p){
   p.variations.forEach(function(v){ if(typeof v.stock==="number"){ known = true; if(v.available!==false) total += Math.max(0, v.stock); } });
   return known ? total : null;
 }
+/* Pre-venda (26/out/2026): vagas da tabela site_prevenda, via catalog_products.prevenda */
+function prevendaData(p){ if(!p || !p.prevenda_envio) return ""; var d = new Date(p.prevenda_envio+"T12:00:00"); var dias=["domingo","segunda","terça","quarta","quinta","sexta","sábado"]; return dias[d.getDay()]+", "+String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0"); }
+function prevendaTexto(p){ var d = prevendaData(p); return d ? "Envio a partir de "+d : "Envio assim que a mercadoria chegar"; }
 function stockWarnText(n){
   return ""; /* aviso de ultimas pecas desativado */
   if(n===1) return "Última peça!";
@@ -1009,6 +1016,7 @@ function productCardHtml(p){
   var stock = productStock(p);
   var warn = p.in_stock ? stockWarnText(stock) : "";
   var badge = !p.in_stock ? "<span class=\"badge oos\">Esgotado</span>" :
+    p.prevenda ? "<span class=\"badge pre\">Pré-venda</span>" :
     (p.promo_price ? (pctOff(precoCheio(p,null), p.promo_price) > 0 ? "<span class=\"badge promo\">-"+pctOff(precoCheio(p,null), p.promo_price)+"%</span>" : "<span class=\"badge promo\">Promo</span>") :
      promoEmBreve(p) ? "<span class=\"badge soon\">"+esc(promoBadgeEmBreve(p))+"</span>" :
      p.sob_encomenda ? "<span class=\"badge enc\">Sob encomenda</span>" :
@@ -1024,6 +1032,7 @@ function productCardHtml(p){
     "<div class=\"pname\">"+esc(p.name)+"</div>" +
     "<div class=\"pprice\">"+priceHtmlFor(p,null)+"</div>" +
     (promoEmBreve(p) ? "<div class=\"pteaser\">"+esc(promoTeaserTexto(p))+"</div>" : "") +
+    (p.prevenda && p.in_stock ? "<div class=\"pteaser pre\">"+esc(prevendaTexto(p))+"</div>" : "") +
     (warn ? "<div class=\"stockwarn\">"+warn+"</div>" : "") +
     (p.in_stock && promoEmBreve(p) && cardComAviso ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();abrirAvisoPromo('"+esc(p.id)+"')\">🔔 Me avisa</button>" :
      p.sob_encomenda ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();encomendarWhatsapp('"+esc(p.id)+"')\">Comprar</button>" :
@@ -1521,6 +1530,10 @@ function selectVariation(idx){
 function detailStockHtml(p){
   if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Normalmente entrega em no máximo 24 horas. Toca em comprar e fala com a gente no WhatsApp: a gente te mostra "+(encEscolha(p).indexOf("frase") > -1 ? "as cores e frases" : (productSizes(p).length > 1 ? "os tamanhos e cores" : "as cores"))+" disponíveis antes de você pagar 💕</div>";
   if(!p.in_stock) return "<div class=\"p-stock\">Produto esgotado no momento</div>";
+  if(p.prevenda){
+    var vp = (selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
+    if(!vp || vp.prevenda) return "<div class=\"pre-note\"><b>Pré-venda com preço especial.</b> "+esc(prevendaTexto(p))+". Garanta a sua agora 💕</div>";
+  }
   if(selectedVariationIdx!=null){
     var v = p.variations[selectedVariationIdx];
     if(v.available===false) return "<div class=\"p-stock\">Essa combinação está esgotada</div>";
