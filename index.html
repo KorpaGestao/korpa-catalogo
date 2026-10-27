@@ -2717,14 +2717,37 @@ function registrarVisita(){
   }
   var ref = "";
   try{ ref = document.referrer ? new URL(document.referrer).hostname : ""; }catch(e){}
-  sb.from("site_visitas").insert({
+  var dados = {
     visitor_id: _getId(localStorage, "korpa_vid"),
     session_id: _getId(sessionStorage, "korpa_sid"),
     page: decodeURIComponent(hash).slice(0,200),
     product_id: prodId, product_name: prodName,
     source: _origemSessao, referrer: ref.slice(0,200),
     device: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "celular" : "computador"
-  }).then(function(){}, function(){});
+  };
+  _pegarLocalVisita().then(function(geo){
+    if(geo){ dados.cidade = geo.cidade || null; dados.estado = geo.estado || null; dados.pais = geo.pais || null; }
+    sb.from("site_visitas").insert(dados).then(function(){}, function(){});
+  });
+}
+// Cidade/estado aproximados (Cloudflare, pelo IP). Busca 1x por sessao e guarda.
+var _localVisitaPromise = null;
+function _pegarLocalVisita(){
+  if(_localVisitaPromise) return _localVisitaPromise;
+  try{
+    var salvo = sessionStorage.getItem("korpa_geo");
+    if(salvo){ _localVisitaPromise = Promise.resolve(JSON.parse(salvo)); return _localVisitaPromise; }
+  }catch(e){}
+  _localVisitaPromise = new Promise(function(resolve){
+    var feito = false;
+    var t = setTimeout(function(){ if(!feito){ feito = true; resolve(null); } }, 2500);
+    fetch("/api/geo", { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(g){
+      if(feito) return; feito = true; clearTimeout(t);
+      if(g && (g.cidade || g.estado)){ try{ sessionStorage.setItem("korpa_geo", JSON.stringify(g)); }catch(e){} }
+      resolve(g);
+    }).catch(function(){ if(!feito){ feito = true; clearTimeout(t); resolve(null); } });
+  });
+  return _localVisitaPromise;
 }
 
 /* ================= POPUP: GANHE 5% (pega nome + WhatsApp) ================= */
