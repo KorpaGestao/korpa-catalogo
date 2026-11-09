@@ -490,6 +490,21 @@ html.ver-todos #todos{display:block;}
 .promo-box .btn{margin-top:12px;}
 .promo-box .pb-ok{margin-top:10px;font-size:13.5px;color:var(--ok);font-weight:600;}
 .promo-page-empty{text-align:center;padding:60px 16px;}
+/* ===== Tema Black (nov/2026): liga sozinho quando a promoção tem "Black" no nome ===== */
+.promo-hero.ph-black{background:radial-gradient(120% 140% at 100% 0%,#3a1f27 0%,#161214 45%,#0b0b0b 100%);}
+.promo-hero.ph-black::after{background:radial-gradient(circle,rgba(232,145,159,.28) 0%,rgba(232,145,159,0) 70%);}
+.ph-black .ph-eyebrow{background:var(--pink);color:#fff;}
+.ph-black .ph-title em{font-style:normal;color:var(--pink);}
+.ph-black .ph-sub b{color:var(--pink);}
+.ph-black .cd-box{background:rgba(255,255,255,.06);border-color:rgba(232,145,159,.55);}
+.ph-black .btn.white{background:var(--pink);border-color:var(--pink);color:#fff;}
+.ph-black .btn.white:hover{background:#fff;border-color:#fff;color:var(--ink);}
+.ph-black .ph-tag{background:var(--pink);color:#fff;}
+.ph-black .ph-imgs a{background:rgba(255,255,255,.06);}
+.ph-kits{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;}
+.ph-kits span{font-size:13px;font-weight:700;border:1px solid rgba(232,145,159,.6);color:#fff;padding:6px 10px;}
+.is-black .badge.promo,.is-black .pcard .badge.promo{background:var(--ink);color:#fff;}
+.is-black .nav>a.navpromo,.is-black .side-links a.navpromo{color:var(--ink);}
 @media(max-width:760px){
   .ph-c{flex-wrap:wrap;gap:10px 12px;padding-top:12px;padding-bottom:12px;}
   .phc-img{flex-basis:56px;width:56px;height:56px;}
@@ -831,7 +846,7 @@ function headerHtml(activeKey){
         "<a class=\""+(activeKey==="home"?"active":"")+"\" onclick=\"goHome()\">Início</a>" +
         "<div class=\"navdrop\"><span class=\""+(activeKey==="cat"?"active":"")+"\" onclick=\"scrollToAll()\">Produtos "+ICON.chevDown+"</span>" +
           "<div class=\"navdrop-menu\"><a onclick=\"scrollToAll()\"><b>Ver todos</b><small>"+buildDisplayProducts().length+"</small></a>"+catLinks+"</div></div>" +
-        (promoCampanha() ? "<a class=\"navpromo"+(activeKey==="promo"?" active":"")+"\" href=\"#promocao\">🔥 Promoção</a>" : "") +
+        (promoCampanha() ? "<a class=\"navpromo"+(activeKey==="promo"?" active":"")+"\" href=\"#promocao\">"+navPromoLabel()+"</a>" : "") +
         "<a onclick=\"contactHelpWhatsapp()\">Contato</a>" +
       "</nav>" +
     "</div>" +
@@ -845,7 +860,7 @@ function headerHtml(activeKey){
       "<div class=\"side-head\">"+logoHtml()+"<button class=\"xbtn\" onclick=\"toggleSideMenu(false)\">&times;</button></div>" +
       "<div class=\"side-links\">" +
         "<a onclick=\"toggleSideMenu(false);goHome()\">Início</a>" +
-        (promoCampanha() ? "<a class=\"navpromo\" onclick=\"toggleSideMenu(false);window.location.hash='#promocao'\">🔥 Promoção</a>" : "") +
+        (promoCampanha() ? "<a class=\"navpromo\" onclick=\"toggleSideMenu(false);window.location.hash='#promocao'\">"+navPromoLabel()+"</a>" : "") +
         "<a onclick=\"toggleSideMenu(false);scrollToAll()\">Todos os produtos<small class=\"muted\">"+buildDisplayProducts().length+"</small></a>" +
         "<div class=\"side-title\">Categorias</div>" +
         cats.map(function(c){ return "<a onclick=\"toggleSideMenu(false);window.location.hash='#categoria/"+encodeURIComponent(c).replace(/'/g,"%27")+"'\">"+esc(c)+"<small class=\"muted\">"+countInCategory(c)+"</small></a>"; }).join("") +
@@ -2398,7 +2413,11 @@ async function carregarPromos(){
       });
     }
   }catch(e){}
+  try{ document.documentElement.classList.toggle("is-black", PROMOS.some(function(pr){ return ehBlackNome(pr.nome) && (!pr.fim || pr.fim > Date.now()) && pr.inicio <= Date.now(); })); }catch(e){}
 }
+function ehBlackNome(n){ return /black/i.test(String(n||"")); }
+function navPromoLabel(){ var c = promoCampanha(); return (c && ehBlackNome(c.nome)) ? "🖤 Black KORPA" : "🔥 Promoção"; }
+function kitsTagsHtml(){ try{ var ks = kitsAtivos(); return ks.length ? "<div class=\"ph-kits\">" + ks.map(function(k){ return "<span>"+esc(kitTexto(k))+"</span>"; }).join("") + "</div>" : ""; }catch(e){ return ""; } }
 function precoCheio(p, v){
   if(v && v.price != null) return Number(v.price);
   if(p.price_max != null) return Number(p.price_max);
@@ -2505,11 +2524,13 @@ function promoHeroHtml(c, naHome){
   var _off = function(p){ var pr = promoDoProduto(p); return pr ? pctOff(precoCheio(p,null), precoNaPromo(pr,p)) : 0; };
   var imgs = c.itens.filter(function(p){ return p.images && p.images[0]; }).slice().sort(function(a,b){ return _off(b) - _off(a); }).slice(0,3);
   var jaInscrita = avisoPromoFeito(c.nome, "todas");
-  return "<section class=\"promo-hero\"><div class=\"wrap ph-in\">" +
+  var bk = ehBlackNome(c.nome);
+  return "<section class=\"promo-hero"+(bk?" ph-black":"")+"\"><div class=\"wrap ph-in\">" +
     "<div>" +
-      "<span class=\"ph-eyebrow\">🔥 "+esc(c.nome)+"</span>" +
-      "<h2 class=\"ph-title\">"+(c.maxOff > 0 ? "Até "+c.maxOff+"% OFF" : "Preços especiais")+"</h2>" +
-      "<p class=\"ph-sub\">"+c.itens.length+" "+(c.itens.length===1?"peça selecionada":"peças selecionadas")+" com preço de promoção · "+esc(periodoTexto(c))+"</p>" +
+      "<span class=\"ph-eyebrow\">"+(bk?"🖤 ":"🔥 ")+esc(c.nome)+"</span>" +
+      "<h2 class=\"ph-title\">"+(c.maxOff > 0 ? "Até <em>"+c.maxOff+"% OFF</em>" : "Preços especiais")+"</h2>" +
+      (bk ? "<p class=\"ph-sub\"><b>"+c.itens.length+" peças</b> com preço de Black · "+esc(periodoTexto(c))+"</p>" + kitsTagsHtml()
+          : "<p class=\"ph-sub\">"+c.itens.length+" "+(c.itens.length===1?"peça selecionada":"peças selecionadas")+" com preço de promoção · "+esc(periodoTexto(c))+"</p>") +
       ((antes ? c.inicio : c.fim) ? "<div class=\"cd-label\">"+(antes ? "Começa em" : "Termina em")+"</div>" + cdHtml(antes ? c.inicio : c.fim) : "") +
       "<div class=\"ph-actions\">" +
         (naHome ? "<a class=\"btn white\" href=\"#promocao\">"+(antes ? "Ver as peças" : "Aproveitar agora")+"</a>" : "") +
