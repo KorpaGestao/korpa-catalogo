@@ -731,7 +731,7 @@ function sincronizarCarrinho(origem, agora){
   }, agora ? 50 : 1500);
 }
 setTimeout(function(){ try{ if(typeof cart !== "undefined" && cart && cart.length) sincronizarCarrinho("visita"); }catch(e){} }, 5000);
-function popupDesligado(){ var p = cfg("popup"); return !!(p && p.ativo === false); }
+function popupDesligado(){ try{ if(blackAtiva()) return true; }catch(e){} var p = cfg("popup"); return !!(p && p.ativo === false); }
 function popupTxt(campo, padrao){ var p = cfg("popup"); return (p && p[campo] && String(p[campo]).trim()) ? String(p[campo]).trim() : padrao; }
 function adbarItensHtml(){
   var a = cfg("avisos");
@@ -2358,7 +2358,8 @@ document.body.insertAdjacentHTML("beforeend",
           "<div class=\"field\"><label>Endereço (rua, número e bairro)</label><input id=\"pix-address\" type=\"text\" autocomplete=\"street-address\" placeholder=\"Rua, número e bairro\"></div>" +
           "<div class=\"field\"><label>Complemento (opcional)</label><input id=\"pix-complement\" type=\"text\" placeholder=\"Apto, bloco, referência\"></div>" +
         "</div>" +
-        "<div class=\"field\"><label>Cupom (opcional)</label><div class=\"coupon-row\"><input id=\"pix-coupon\" type=\"text\" placeholder=\"Código do cupom\" autocapitalize=\"characters\" oninput=\"cupomEditado()\" onkeydown=\"if(event.key==='Enter')aplicarCupom()\"><button type=\"button\" class=\"btn ghost\" onclick=\"aplicarCupom()\">Aplicar</button></div><div class=\"coupon-msg\" id=\"coupon-msg\"></div></div>" +
+        (blackAtiva() ? "<div class=\"kit-hint\" style=\"margin:4px 0 12px\">🖤 Na Black KORPA não vale cupom de desconto: os preços já estão no menor valor.</div>" :
+        "<div class=\"field\"><label>Cupom (opcional)</label><div class=\"coupon-row\"><input id=\"pix-coupon\" type=\"text\" placeholder=\"Código do cupom\" autocapitalize=\"characters\" oninput=\"cupomEditado()\" onkeydown=\"if(event.key==='Enter')aplicarCupom()\"><button type=\"button\" class=\"btn ghost\" onclick=\"aplicarCupom()\">Aplicar</button></div><div class=\"coupon-msg\" id=\"coupon-msg\"></div></div>") +
         "<input id=\"pix-cep\" type=\"hidden\">" +
         "<button class=\"btn block\" id=\"checkout-submit\" onclick=\"submitCheckout()\">Gerar Pix e pagar</button>" +
         "<div class=\"secure\" id=\"checkout-secure\"></div>" +
@@ -2420,9 +2421,11 @@ async function carregarPromos(){
       });
     }
   }catch(e){}
-  try{ document.documentElement.classList.toggle("is-black", PROMOS.some(function(pr){ return ehBlackNome(pr.nome) && (!pr.fim || pr.fim > Date.now()) && pr.inicio <= Date.now(); })); }catch(e){}
+  try{ document.documentElement.classList.toggle("is-black", blackAtiva()); if(blackAtiva()){ esconderBotaoLead(); } }catch(e){}
 }
 function ehBlackNome(n){ return /black/i.test(String(n||"")); }
+/* Durante a Black: nenhum cupom vale (nem o de primeira compra) e o popup de 5% some */
+function blackAtiva(){ var a = Date.now(); return PROMOS.some(function(pr){ return ehBlackNome(pr.nome) && pr.inicio <= a && (!pr.fim || pr.fim > a); }); }
 function navPromoLabel(){ var c = promoCampanha(); return (c && ehBlackNome(c.nome)) ? "🖤 Black KORPA" : "🔥 Promoção"; }
 function kitsTagsHtml(){ try{ var ks = kitsAtivos(); return ks.length ? "<div class=\"ph-kits\">" + ks.map(function(k){ return "<a href=\"#kit/"+encodeURIComponent(k.id)+"\">"+esc(kitTexto(k))+" ›</a>"; }).join("") + "</div>" : ""; }catch(e){ return ""; } }
 function precoCheio(p, v){
@@ -2696,6 +2699,7 @@ function cupomDescontoSite(foraDoKit, subtotal){
   return round2(base * cupomAplicado.pct/100);
 }
 function aplicarCupom(silencioso){
+  if(blackAtiva()){ cupomAplicado = null; return; }
   var el = document.getElementById("pix-coupon");
   var codigo = el ? el.value.trim().toUpperCase() : "";
   if(!codigo){ cupomAplicado = null; setCupomMsg("", ""); renderCheckoutSummary(); return; }
