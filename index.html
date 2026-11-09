@@ -502,7 +502,12 @@ html.ver-todos #todos{display:block;}
 .ph-black .ph-tag{background:var(--pink);color:#fff;}
 .ph-black .ph-imgs a{background:rgba(255,255,255,.06);}
 .ph-kits{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;}
-.ph-kits span{font-size:13px;font-weight:700;border:1px solid rgba(232,145,159,.6);color:#fff;padding:6px 10px;}
+.ph-kits a{font-size:13px;font-weight:700;border:1px solid rgba(232,145,159,.6);color:#fff;padding:7px 12px;text-decoration:none;cursor:pointer;transition:background .2s;}
+.ph-kits a:hover{background:var(--pink);border-color:var(--pink);}
+.kit-page-head{padding:28px 0 6px;}
+.kit-page-head h1{font-family:var(--display);font-stretch:115%;font-weight:900;font-size:clamp(28px,5vw,42px);margin:0 0 8px;color:var(--ink);}
+.kit-page-head p{margin:0;color:var(--text);font-size:15px;line-height:1.5;}
+.kit-page-head p b{color:var(--pink-dark);}
 .is-black .badge.promo,.is-black .pcard .badge.promo{background:var(--ink);color:#fff;}
 .is-black .nav>a.navpromo,.is-black .side-links a.navpromo{color:var(--ink);}
 @media(max-width:760px){
@@ -647,6 +652,8 @@ function route(isRefresh){
     renderHome(decodeURIComponent(hash.replace("#categoria/","")));
   } else if(hash === "#promocao"){
     renderPromoPage();
+  } else if(hash.indexOf("#kit/") === 0){
+    renderKitPage(decodeURIComponent(hash.replace("#kit/","")));
   } else {
     renderHome(null);
   }
@@ -2417,7 +2424,7 @@ async function carregarPromos(){
 }
 function ehBlackNome(n){ return /black/i.test(String(n||"")); }
 function navPromoLabel(){ var c = promoCampanha(); return (c && ehBlackNome(c.nome)) ? "🖤 Black KORPA" : "🔥 Promoção"; }
-function kitsTagsHtml(){ try{ var ks = kitsAtivos(); return ks.length ? "<div class=\"ph-kits\">" + ks.map(function(k){ return "<span>"+esc(kitTexto(k))+"</span>"; }).join("") + "</div>" : ""; }catch(e){ return ""; } }
+function kitsTagsHtml(){ try{ var ks = kitsAtivos(); return ks.length ? "<div class=\"ph-kits\">" + ks.map(function(k){ return "<a href=\"#kit/"+encodeURIComponent(k.id)+"\">"+esc(kitTexto(k))+" ›</a>"; }).join("") + "</div>" : ""; }catch(e){ return ""; } }
 function precoCheio(p, v){
   if(v && v.price != null) return Number(v.price);
   if(p.price_max != null) return Number(p.price_max);
@@ -2529,7 +2536,7 @@ function promoHeroHtml(c, naHome){
     "<div>" +
       "<span class=\"ph-eyebrow\">"+(bk?"🖤 ":"🔥 ")+esc(c.nome)+"</span>" +
       "<h2 class=\"ph-title\">"+(c.maxOff > 0 ? "Até <em>"+c.maxOff+"% OFF</em>" : "Preços especiais")+"</h2>" +
-      (bk ? "<p class=\"ph-sub\"><b>"+c.itens.length+" peças</b> com preço de Black · "+esc(periodoTexto(c))+"</p>" + kitsTagsHtml()
+      (bk ? "<p class=\"ph-sub\">Preço de Black em toda a loja · "+esc(periodoTexto(c))+"</p>" + kitsTagsHtml()
           : "<p class=\"ph-sub\">"+c.itens.length+" "+(c.itens.length===1?"peça selecionada":"peças selecionadas")+" com preço de promoção · "+esc(periodoTexto(c))+"</p>") +
       ((antes ? c.inicio : c.fim) ? "<div class=\"cd-label\">"+(antes ? "Começa em" : "Termina em")+"</div>" + cdHtml(antes ? c.inicio : c.fim) : "") +
       "<div class=\"ph-actions\">" +
@@ -2562,6 +2569,21 @@ function renderPromoPage(){
     (c.fase === "antes" ? "<p class=\"muted\" style=\"margin:-10px 0 20px\">Os preços de promoção entram no site automaticamente "+esc(diaSemana(c.inicio))+" "+esc(diaMes(c.inicio))+" à meia-noite. Toca em 🔔 Me avisa e a gente te manda um e-mail na hora 💕</p>" : "") +
     grid + "</section></div>" + renderFooter();
   tickCountdowns();
+}
+/* Página de um kit "Leve N por R$ X" (nov/2026): lista só as peças que entram no kit */
+function renderKitPage(id){
+  var k = kitsAtivos().find(function(x){ return x.id === id; });
+  var top = headerHtml("promo");
+  if(!k){ window.location.hash = "#promocao"; return; }
+  var itens = products.filter(function(p){ return p.in_stock && p.promo_kit && p.promo_kit.id === id; });
+  document.title = kitTexto(k) + " · KORPA Moda Fitness Feminina";
+  document.getElementById("app").innerHTML = top +
+    "<div class=\"wrap\"><div class=\"kit-page-head\"><a class=\"linkbtn\" href=\"#promocao\">‹ Voltar pra promoção</a>" +
+      "<h1>"+esc(kitTexto(k))+"</h1>" +
+      "<p>Escolha <b>"+k.qtd+" peças</b> desta lista e pague <b>"+brl(k.preco)+"</b> no Pix. Pode misturar modelos e cores. O desconto aparece sozinho na sacola 💕</p>" +
+      "<p class=\"muted\" style=\"font-size:13px;margin-top:6px\">Promoção não cumulativa com cupons de desconto.</p>" +
+    "</div><section class=\"section\"><div class=\"section-head\"><h2>Peças que entram no kit</h2><span class=\"muted\">"+itens.length+" "+(itens.length===1?"modelo":"modelos")+"</span></div>" +
+    gridOrEmpty(itens, "As peças deste kit esgotaram.") + "</section></div>" + renderFooter();
 }
 function promoBoxProdutoHtml(p){
   var pr = promoDoProduto(p); if(!pr || !p.in_stock) return "";
