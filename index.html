@@ -818,12 +818,15 @@ function allCategories(){
   cats.sort(function(a,b){ return a.localeCompare(b,"pt-BR"); });
   FABRIC_CATS.forEach(function(f){ if(cats.indexOf(f)===-1 && countInCategory(f)>0) cats.push(f); });
   cats = cats.filter(function(c){ return c !== PRAIA_CAT; });
+  cats = cats.filter(function(c){ return c !== CASUAL_CAT; });
   cats = ordenarCategorias(cats);
+  cats.push(CASUAL_CAT); /* aba Casual sempre aparece, mesmo sem peças cadastradas ainda (nov/2026) */
   if(countInCategory(PRAIA_CAT) > 0) cats.push(PRAIA_CAT);
   return cats;
 }
 var FABRIC_CATS = ["Poliamida","Suplex"]; /* categorias por tecido (lidas da descrição), sempre por último */
 function fabricOf(p){ var t=((p.specs||"")+" "+(p.description||"")).toLowerCase(); if(t.indexOf("poliamida")>-1) return "Poliamida"; if(t.indexOf("suplex")>-1) return "Suplex"; return null; }
+var CASUAL_CAT = "Casual"; /* roupas casuais (peças de uma amiga), aba fixa antes de Moda Praia */
 var PRAIA_CAT = "Moda Praia"; /* categoria de praia (out/2026): categoria "Moda Praia" ou selo moda_praia, sempre por ultimo */
 function inCategory(p,c){
   if(c === PRAIA_CAT) return p.category === PRAIA_CAT || (p.selos||[]).indexOf("moda_praia") > -1;
@@ -1224,7 +1227,7 @@ function renderHome(categoryFilter){
     document.title = categoryFilter + " · KORPA Moda Fitness Feminina";
     body = "<div class=\"wrap\"><div class=\"crumbs\"><a onclick=\"goHome()\">Início</a> &gt; <a onclick=\"scrollToAll()\">Produtos</a> &gt; "+esc(categoryFilter)+"</div>" +
       "<section class=\"section\" style=\"padding-top:12px\"><div class=\"section-head\"><h2>"+esc(categoryFilter)+"</h2><span class=\"muted\">"+catResults.length+" "+(catResults.length===1?"peça":"peças")+"</span></div>" +
-      toolbarHtml(categoryFilter) + gridOrEmpty(catResults, "Nenhuma peça nessa categoria no momento.") + "</section></div>";
+      toolbarHtml(categoryFilter) + gridOrEmpty(catResults, categoryFilter===CASUAL_CAT ? "Novidades chegando em breve 💕" : "Nenhuma peça nessa categoria no momento.") + "</section></div>";
     document.getElementById("app").innerHTML = top + body + renderFooter();
     return;
   }
@@ -1242,7 +1245,7 @@ function renderHome(categoryFilter){
   var lancSelo = displayList.filter(function(p){ return p.in_stock && (p.selos||[]).indexOf("lancamento") > -1; });
   if(lancSelo.length) newest = lancSelo.slice(0,12);
 
-  var cats = allCategories();
+  var cats = allCategories().filter(function(c){ return countInCategory(c) > 0; }); /* na home só mostra categoria com peça */
   var catsHtml = cats.length ? ("<section class=\"section\"><div class=\"wrap\"><div class=\"section-head\" style=\"justify-content:center\"><h2>Compre por categoria</h2></div><div class=\"cats\">" +
     cats.map(function(c){
       var CAT_COVER = { "Shorts Duplos": "Short Duplo Uniforme", "Casacos": "Casaco Importado", "Blusas": "Blusa Virginia" }; CAT_COVER = Object.assign({}, CAT_COVER, (cfg("categorias")||{}).capas||{}); /* capa fixa da categoria (id do produto) */
