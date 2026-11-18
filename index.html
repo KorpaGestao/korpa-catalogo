@@ -1522,7 +1522,8 @@ function pickersHtml(p){
   var html = "";
   var sizes = productSizes(p);
   if(sizes.length){
-    html += "<div class=\"optlabel\">Tamanho: <b>"+(selSize!=null?esc(selSize):"")+"</b></div><div class=\"opts\">" +
+    var ehOpcaoTop = sizes.every(function(s){ return /com top|sem top/i.test(s); }); /* conjunto vendido com ou sem top (nov/2026) */
+    html += "<div class=\"optlabel\">"+(ehOpcaoTop?"Tamanho e opção":"Tamanho")+": <b>"+(selSize!=null?esc(selSize):"")+"</b></div><div class=\"opts\">" +
       sizes.map(function(s){
         var ok = optAvailable(p, s, selColor);
         return "<button class=\"opt"+(selSize!=null&&optKey(selSize)===optKey(s)?" selected":"")+(ok?"":" off")+"\" onclick=\"pickSize('"+esc(s).replace(/'/g,"\\'")+"')\">"+esc(s)+"</button>";
