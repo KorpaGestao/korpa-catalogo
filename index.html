@@ -926,6 +926,7 @@ function pixOffPct(){ return Math.round(100*(1-1/(1+cardFeePct()/100))); }
 function pixLine(n){ return "<span class=\"pixline\">"+brl(n)+" no Pix <span class=\"pixoff\">"+pixOffPct()+"% OFF</span></span>"; }
 /* Preco em destaque = preco no cartao; preco do sistema = preco no Pix (com selo de desconto) */
 function priceHtmlFor(p, v){
+  if(!p.in_stock && !p.sob_encomenda) return "<span class=\"from\">Esgotado</span>";
   if(p.promo_price){ var cheio = precoCheio(p, v); return (cheio > Number(p.promo_price) ? "<span class=\"old\">"+brl(cardPrice(cheio))+"</span>" : "")+brl(cardPrice(p.promo_price))+pixLine(p.promo_price); }
   if(v && v.price!=null){ return brl(cardPrice(v.price))+pixLine(v.price); }
   if(p.price_min!=null && p.price_max!=null && Number(p.price_min)!==Number(p.price_max)){ return "<span class=\"from\">a partir de </span>"+brl(cardPrice(p.price_min))+pixLine(p.price_min); }
@@ -1086,7 +1087,7 @@ function productCardHtml(p){
     (p.in_stock && promoEmBreve(p) && cardComAviso ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();abrirAvisoPromo('"+esc(p.id)+"')\">🔔 Me avisa</button>" :
      p.sob_encomenda ? "<button class=\"btn sm\" onclick=\"event.preventDefault();event.stopPropagation();encomendarWhatsapp('"+esc(p.id)+"')\">Comprar</button>" :
      p.in_stock ? "<span class=\"btn sm\">Comprar</span>"
-      : "<button class=\"btn sm ghost\" onclick=\"event.preventDefault();event.stopPropagation();openAviseModal('"+esc(p.id)+"','"+safeName+"')\">Avise-me</button>") +
+      : "<button class=\"btn sm ghost\" onclick=\"event.preventDefault();event.stopPropagation();openAviseModal('"+esc(p.id)+"','"+safeName+"')\">Quero de novo 💙</button>") +
   "</a>";
 }
 
@@ -1578,7 +1579,7 @@ function selectVariation(idx){
 }
 function detailStockHtml(p){
   if(p.sob_encomenda) return "<div class=\"enc-note\"><b>Peça sob encomenda.</b> Normalmente entrega em no máximo 24 horas. Toca em comprar e fala com a gente no WhatsApp: a gente te mostra "+(encEscolha(p).indexOf("frase") > -1 ? "as cores e frases" : (productSizes(p).length > 1 ? "os tamanhos e cores" : "as cores"))+" disponíveis antes de você pagar 💕</div>";
-  if(!p.in_stock) return "<div class=\"p-stock\">Produto esgotado no momento</div>";
+  if(!p.in_stock) return "<div class=\"p-stock\">Esgotou! Quer ver essa peça aqui de novo? 💙 Deixa seu WhatsApp que a gente te avisa quando voltar.</div>";
   if(p.prevenda){
     var vp = (selectedVariationIdx!=null && p.variations) ? p.variations[selectedVariationIdx] : null;
     if(!vp || vp.prevenda) return "<div class=\"pre-note\"><b>Pré-venda com preço especial.</b> "+esc(prevendaTexto(p))+". Garanta a sua agora 💕</div>";
@@ -1610,7 +1611,7 @@ function detailActionsHtml(p, idx){
     nameForAlert += " (" + esc(v.size||"").replace(/'/g,"") + (v.color ? (" / "+esc(v.color).replace(/'/g,"")) : "") + ")";
     if(v._realProductId) realIdForAlert = v._realProductId;
   }
-  return "<div class=\"buyrow\"><button class=\"btn ghost\" onclick=\"openAviseModal('"+esc(realIdForAlert)+"','"+nameForAlert+"')\">Avise-me quando chegar</button></div>";
+  return "<div class=\"buyrow\"><button class=\"btn ghost\" onclick=\"openAviseModal('"+esc(realIdForAlert)+"','"+nameForAlert+"')\">"+(p.in_stock ? "Avise-me quando chegar" : "Quero ver de novo 💙")+"</button></div>";
 }
 function buyNow(productId){
   var _pe = findProductForRoute(productId); if(_pe && _pe.sob_encomenda) return;
@@ -2387,7 +2388,7 @@ document.body.insertAdjacentHTML("beforeend",
   "</div>" +
   "<div class=\"avise-modal-overlay\" id=\"avise-modal-overlay\" onclick=\"closeAviseModal()\"></div>" +
   "<div class=\"avise-modal\" id=\"avise-modal\" role=\"dialog\" aria-label=\"Avise-me\">" +
-    "<div class=\"modal-head\"><h3>Avise-me quando chegar</h3><button class=\"xbtn\" onclick=\"closeAviseModal()\" aria-label=\"Fechar\">&times;</button></div>" +
+    "<div class=\"modal-head\"><h3>Quer ver essa peça aqui de novo? 💙</h3><button class=\"xbtn\" onclick=\"closeAviseModal()\" aria-label=\"Fechar\">&times;</button></div>" +
     "<div class=\"modal-body\">" +
       "<div id=\"avise-form-wrap\">" +
         "<p style=\"font-size:14px;color:var(--muted);margin:0 0 14px;\" id=\"avise-product-name\"></p>" +
