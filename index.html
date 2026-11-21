@@ -820,7 +820,7 @@ function allCategories(){
   cats = cats.filter(function(c){ return c !== PRAIA_CAT; });
   cats = cats.filter(function(c){ return c !== CASUAL_CAT; });
   cats = ordenarCategorias(cats);
-  cats.push(CASUAL_CAT); /* aba Casual sempre aparece, mesmo sem peças cadastradas ainda (nov/2026) */
+  /* aba Casual retirada do site a pedido (21/nov/2026) */
   if(countInCategory(PRAIA_CAT) > 0) cats.push(PRAIA_CAT);
   return cats;
 }
