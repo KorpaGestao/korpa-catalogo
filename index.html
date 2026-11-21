@@ -2219,7 +2219,7 @@ function pagarPix(){
     }
     if(!data || data.error || !data.qrCode){ errEl.textContent = (data && data.error) || "Não foi possível gerar o Pix agora."; return; }
     currentPedidoId = data.pedidoId;
-    ultimoPedidoPix = { id: data.pedidoId, total: data.total, nome: d.name, entrega: currentFreight.nome, itens: cart.map(function(i){ return i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):""); }) };
+    ultimoPedidoPix = { id: data.pedidoId, total: data.total, nome: d.name, entrega: currentFreight.nome, itens: cart.map(function(i){ var prod = products.find(function(x){ return x.id===i.id; }); var cod = prod && prod.code ? (" · " + prod.code) : ""; return i.qty+"x "+i.name+(i.variation?(" ("+i.variation+")"):"")+cod+" - "+brl(i.unitPrice*i.qty); }) };
     if(data.qrCodeBase64){ document.getElementById("pix-qr-img").src = "data:image/png;base64," + data.qrCodeBase64; document.getElementById("pix-qr-wrap").style.display = ""; }
     else document.getElementById("pix-qr-wrap").style.display = "none";
     document.getElementById("pix-copy-text").value = data.qrCode;
@@ -2236,7 +2236,7 @@ function pagarPix(){
 }
 function avisarLojaPix(){
   var p = ultimoPedidoPix; if(!p) return;
-  var msg = "Olá! Acabei de pagar meu pedido pelo Pix no site 💕\n\nPedido #" + String(p.id).slice(0,8) +
+  var msg = "Olá! Acabei de pagar meu pedido pelo Pix no site.\n\nPedido #" + String(p.id).slice(0,8) +
     "\n" + p.itens.map(function(s){ return "• "+s; }).join("\n") +
     "\nEntrega: " + p.entrega + "\nTotal pago: " + brl(p.total) + "\n\nNome: " + p.nome;
   window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg), "_blank");
